@@ -4,6 +4,8 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import models
 
+from .managers import StockMovementManager
+
 
 class StockMovement(models.Model):
     OPENING = "OPENING"
@@ -33,6 +35,8 @@ class StockMovement(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = StockMovementManager()
 
     class Meta:
         ordering = ["created_at", "id"]
