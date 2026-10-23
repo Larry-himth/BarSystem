@@ -1,5 +1,5 @@
 """
-Django settings for Bar POS backend (Phase 0 skeleton).
+Django settings for Bar POS backend.
 """
 import os
 from pathlib import Path
@@ -27,6 +27,15 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_spectacular',
     # Local
+    'core',
+    'users',
+    'catalog',
+    'shifts',
+    'stock',
+    'sales',
+    'tabs',
+    'restock',
+    'audit',
 ]
 
 MIDDLEWARE = [
@@ -74,6 +83,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+AUTH_USER_MODEL = 'users.User'
+
 LANGUAGE_CODE = os.getenv('LANGUAGE_CODE', 'en')
 TIME_ZONE = os.getenv('TIME_ZONE', 'Africa/Kampala')
 USE_I18N = True
@@ -87,6 +98,9 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
 }
 
 SPECTACULAR_SETTINGS = {
