@@ -14,6 +14,7 @@ class StockMovement(models.Model):
     SPILLAGE = "SPILLAGE"
     COMP = "COMP"
     ADJUSTMENT = "ADJUSTMENT"
+    VOID_REVERSAL = "VOID_REVERSAL"
     CLOSING_COUNT = "CLOSING_COUNT"
 
     TYPE_CHOICES = [
@@ -23,6 +24,7 @@ class StockMovement(models.Model):
         (SPILLAGE, "Spillage"),
         (COMP, "Comp"),
         (ADJUSTMENT, "Adjustment"),
+        (VOID_REVERSAL, "Void reversal"),
         (CLOSING_COUNT, "Closing Count"),
     ]
 
