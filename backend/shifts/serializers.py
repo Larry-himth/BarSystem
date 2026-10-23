@@ -8,3 +8,43 @@ class OpenShiftSerializer(serializers.Serializer):
 class ShiftOpenedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
+
+
+class CountLineSerializer(serializers.Serializer):
+    item_id = serializers.IntegerField()
+    counted_qty = serializers.IntegerField(min_value=0)
+
+
+class ShiftCountSerializer(serializers.Serializer):
+    type = serializers.ChoiceField(choices=["OPENING", "CLOSING"])
+    counts = CountLineSerializer(many=True, allow_empty=False)
+
+
+class ShiftCountResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    variances = serializers.ListField(child=serializers.DictField(), required=False)
+
+
+class ShiftSubmitResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class ShiftApproveResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class ShiftDisputeSerializer(serializers.Serializer):
+    note = serializers.CharField()
+
+
+class ShiftDisputeResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
+class MomoConfirmSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=["PENDING", "CONFIRMED", "DISPUTED"])
+    note = serializers.CharField(required=False, allow_blank=True)
+
+
+class MomoConfirmResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
