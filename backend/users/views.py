@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from audit.models import AuditLog
 from .models import User
 from .serializers import LoginSerializer, MeSerializer
 from .utils import verify_pin
@@ -33,6 +34,13 @@ class PinLoginView(APIView):
                 {"code": "AUTH_FAILED", "message": "Invalid credentials"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+        AuditLog.objects.create(
+            user=user,
+            action="LOGIN",
+            entity="User",
+            entity_id=str(user.id),
+            metadata={"method": "pin"},
+        )
         refresh = RefreshToken.for_user(user)
         return Response({"access": str(refresh.access_token), "refresh": str(refresh)})
 

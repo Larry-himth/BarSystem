@@ -82,6 +82,14 @@ class SaleCreateView(APIView):
                 tab=tab,
             )
 
+        AuditLog.objects.create(
+            user=request.user,
+            action="SALE_CREATE",
+            entity="Sale",
+            entity_id=str(sale.id),
+            metadata={"total": total, "shift_id": shift.id},
+        )
+
         return Response({"id": sale.id, "total": total}, status=status.HTTP_201_CREATED)
 
 
@@ -124,7 +132,7 @@ class SaleVoidView(APIView):
                 item=line.item_unit.item,
                 shift=sale.shift,
                 qty_base=line.item_unit.qty_in_base_unit * line.qty,
-                type=StockMovement.ADJUSTMENT,
+                type=StockMovement.VOID_REVERSAL,
                 reason=f"VOID {sale.id}",
                 created_by=user,
             )

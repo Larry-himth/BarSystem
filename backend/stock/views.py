@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from audit.models import AuditLog
 from catalog.models import Item
 from shifts.models import Shift
 from stock.models import StockMovement
@@ -33,7 +34,7 @@ class StockMovementCreateView(APIView):
         if data["type"] in ("SPILLAGE", "COMP"):
             qty_base = -abs(qty_base)
 
-        StockMovement.objects.create(
+        movement = StockMovement.objects.create(
             uuid=uuid.uuid4(),
             item=item,
             shift=shift,
@@ -42,4 +43,13 @@ class StockMovementCreateView(APIView):
             reason=data.get("reason", ""),
             created_by=request.user,
         )
+
+        AuditLog.objects.create(
+            user=request.user,
+            action=f"STOCK_{data['type']}",
+            entity="StockMovement",
+            entity_id=str(movement.uuid),
+            metadata={"item_id": item.id, "shift_id": shift.id, "qty_base": qty_base},
+        )
+
         return Response({"status": "created"}, status=status.HTTP_201_CREATED)

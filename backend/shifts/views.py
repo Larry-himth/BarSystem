@@ -1,9 +1,11 @@
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from audit.models import AuditLog
 from .models import Shift
 from .serializers import OpenShiftSerializer, ShiftOpenedSerializer
 
@@ -24,5 +26,12 @@ class OpenShiftView(APIView):
             opened_by=request.user,
             status=Shift.OPEN,
             notes=serializer.validated_data.get("notes", ""),
+        )
+        AuditLog.objects.create(
+            user=request.user,
+            action="SHIFT_OPEN",
+            entity="Shift",
+            entity_id=str(shift.id),
+            metadata={},
         )
         return Response({"id": shift.id, "status": shift.status}, status=status.HTTP_201_CREATED)

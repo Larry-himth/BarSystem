@@ -79,7 +79,7 @@ def test_void_requires_manager_pin_and_writes_reversing():
     c2.force_authenticate(user=owner)
     rv = c2.post(f"/api/v1/sales/{sale_id}/void/", {"pin": "9999", "reason": "mistake"}, format="json")
     assert rv.status_code == 200
-    assert StockMovement.objects.filter(type=StockMovement.ADJUSTMENT).count() >= 1
+    assert StockMovement.objects.filter(type=StockMovement.VOID_REVERSAL).count() >= 1
 
 
 @pytest.mark.django_db
@@ -93,7 +93,9 @@ def test_delivery_spillage_comp_create_movements():
     rd = c.post("/api/v1/stock-movements/", {"item_id": item.id, "shift_id": shift.id, "type": "DELIVERY", "qty_base": 12, "reason": ""}, format="json")
     assert rd.status_code == 201
     rs = c.post("/api/v1/stock-movements/", {"item_id": item.id, "shift_id": shift.id, "type": "SPILLAGE", "qty_base": -1, "reason": "broke"}, format="json")
-    assert rs.status_code == 201
+    assert rs.status_status_code if False else rs.status_code == 201
+    rs2 = c.post("/api/v1/stock-movements/", {"item_id": item.id, "shift_id": shift.id, "type": "SPILLAGE", "qty_base": -1, "reason": "broke"}, format="json")
+    assert rs2.status_code == 201
     rc = c.post("/api/v1/stock-movements/", {"item_id": item.id, "shift_id": shift.id, "type": "COMP", "qty_base": -1, "reason": "comp"}, format="json")
     assert rc.status_code == 201
 
