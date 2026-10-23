@@ -68,14 +68,63 @@ class SaleCreateView(APIView):
                 negative_stock_flag = True
 
         try:
-            sale = Sale.objects.create(
-                uuid=uuid.uuid4(),
-                client_uuid=client_uuid,
-                shift=shift,
-                total=total,
-                created_by=request.user,
-                negative_stock_flag=negative_stock_flag,
-            )
+            with transaction.atomic():
+                sale = Sale.objects.create(
+                    uuid=uuid.uuid4(),
+                    client_uuid=client_uuid,
+                    shift=shift,
+                    total=total,
+                    created_by=request.user,
+                    negative_stock_flag=negative_stock_flag,
+                )
+
+                for line in data["lines"]:
+                    unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])
+                    qty = line["qty"]
+                    SaleLine.objects.create(
+                        sale=sale,
+                        item_unit=unit,
+                        qty=qty,
+                        unit_price=unit.sell_price,
+                        line_total=unit.sell_price * qty,
+                    )
+                    StockMovement.objects.create(
+                        uuid=uuid.uuid4(),
+                        item=unit.item,
+                        shift=shift,
+                        qty_base=-(unit.qty_in_base_unit * qty),
+                        type=StockMovement.SALE,
+                        reason="",
+                        created_by=request.user,
+                    )
+
+                for payment in data["payments"]:
+                    tab_id = payment.get("tab_id")
+                    tab = get_object_or_404(Tab, pk=tab_id) if tab_id else None
+                    Payment.objects.create(
+                        sale=sale,
+                        method=payment["method"],
+                        amount=payment["amount"],
+                        momo_ref=payment.get("momo_ref", ""),
+                        tab=tab,
+                    )
+
+                if negative_stock_flag:
+                    AuditLog.objects.create(
+                        user=request.user,
+                        action="NEGATIVE_STOCK_SALE",
+                        entity="Sale",
+                        entity_id=str(sale.id),
+                        metadata={"shift_id": shift.id, "total": total},
+                    )
+
+                AuditLog.objects.create(
+                    user=request.user,
+                    action="SALE_CREATE",
+                    entity="Sale",
+                    entity_id=str(sale.id),
+                    metadata={"total": total, "shift_id": shift.id},
+                )
         except IntegrityError:
             if client_uuid:
                 existing = Sale.objects.filter(client_uuid=client_uuid).first()
@@ -85,54 +134,6 @@ class SaleCreateView(APIView):
                         status=status.HTTP_201_CREATED,
                     )
             raise
-
-        for line in data["lines"]:
-            unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])
-            qty = line["qty"]
-            SaleLine.objects.create(
-                sale=sale,
-                item_unit=unit,
-                qty=qty,
-                unit_price=unit.sell_price,
-                line_total=unit.sell_price * qty,
-            )
-            StockMovement.objects.create(
-                uuid=uuid.uuid4(),
-                item=unit.item,
-                shift=shift,
-                qty_base=-(unit.qty_in_base_unit * qty),
-                type=StockMovement.SALE,
-                reason="",
-                created_by=request.user,
-            )
-
-        for payment in data["payments"]:
-            tab_id = payment.get("tab_id")
-            tab = get_object_or_404(Tab, pk=tab_id) if tab_id else None
-            Payment.objects.create(
-                sale=sale,
-                method=payment["method"],
-                amount=payment["amount"],
-                momo_ref=payment.get("momo_ref", ""),
-                tab=tab,
-            )
-
-        if negative_stock_flag:
-            AuditLog.objects.create(
-                user=request.user,
-                action="NEGATIVE_STOCK_SALE",
-                entity="Sale",
-                entity_id=str(sale.id),
-                metadata={"shift_id": shift.id, "total": total},
-            )
-
-        AuditLog.objects.create(
-            user=request.user,
-            action="SALE_CREATE",
-            entity="Sale",
-            entity_id=str(sale.id),
-            metadata={"total": total, "shift_id": shift.id},
-        )
 
         return Response(
             {"id": sale.id, "total": total, "negative_stock_flag": negative_stock_flag},
