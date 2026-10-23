@@ -1,4 +1,3 @@
-from django.contrib.auth.hashers import check_password
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -7,7 +6,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
-from .serializers import LoginSerializer
+from .serializers import LoginSerializer, MeSerializer
+from .utils import verify_pin
 
 
 class PinLoginView(APIView):
@@ -28,9 +28,7 @@ class PinLoginView(APIView):
                 {"code": "AUTH_FAILED", "message": "Invalid credentials"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        if user.pin_hash and (check_password(pin, user.pin_hash) or user.pin_hash == pin):
-            pass
-        else:
+        if not verify_pin(user, pin):
             return Response(
                 {"code": "AUTH_FAILED", "message": "Invalid credentials"},
                 status=status.HTTP_401_UNAUTHORIZED,
@@ -46,6 +44,7 @@ LoginView = PinLoginView
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses=MeSerializer)
     def get(self, request):
         u = request.user
         return Response({"id": u.id, "username": u.username, "name": u.name, "role": u.role})
