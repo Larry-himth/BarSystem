@@ -27,6 +27,12 @@ class StockMovementCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        if request.user.role == "BARTENDER" and data["type"] == "ADJUSTMENT":
+            return Response(
+                {"code": "FORBIDDEN", "message": "Not allowed"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         item = get_object_or_404(Item, pk=data["item_id"])
         shift = get_object_or_404(Shift, pk=data["shift_id"])
 

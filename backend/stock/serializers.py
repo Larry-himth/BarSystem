@@ -4,7 +4,7 @@ from rest_framework import serializers
 class StockMovementCreateSerializer(serializers.Serializer):
     item_id = serializers.IntegerField()
     shift_id = serializers.IntegerField()
-    type = serializers.ChoiceField(choices=["DELIVERY", "SPILLAGE", "COMP"])
+    type = serializers.ChoiceField(choices=["DELIVERY", "SPILLAGE", "COMP", "ADJUSTMENT"])
     qty_base = serializers.IntegerField()
     reason = serializers.CharField(required=False, allow_blank=True)
 

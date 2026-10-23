@@ -1,6 +1,6 @@
 import uuid
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -14,6 +14,7 @@ from catalog.models import ItemUnit
 from sales.models import Payment, Sale, SaleLine
 from shifts.models import Shift
 from stock.models import StockMovement
+from stock.services import current_stock
 from tabs.models import Tab
 from users.utils import verify_pin
 
@@ -35,6 +36,16 @@ class SaleCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        client_uuid = data.get("client_uuid")
+
+        if client_uuid:
+            existing = Sale.objects.filter(client_uuid=client_uuid).first()
+            if existing:
+                return Response(
+                    {"id": existing.id, "total": existing.total, "negative_stock_flag": existing.negative_stock_flag},
+                    status=status.HTTP_201_CREATED,
+                )
+
         shift = get_object_or_404(Shift, pk=data["shift_id"])
         if shift.status != Shift.OPEN:
             return Response(
@@ -47,9 +58,33 @@ class SaleCreateView(APIView):
             unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])
             total += unit.sell_price * line["qty"]
 
-        sale = Sale.objects.create(
-            uuid=uuid.uuid4(), shift=shift, total=total, created_by=request.user
-        )
+        negative_stock_flag = False
+        for line in data["lines"]:
+            unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])
+            qty = line["qty"]
+            current = current_stock(unit.item)
+            projected = current - (unit.qty_in_base_unit * qty)
+            if projected < 0:
+                negative_stock_flag = True
+
+        try:
+            sale = Sale.objects.create(
+                uuid=uuid.uuid4(),
+                client_uuid=client_uuid,
+                shift=shift,
+                total=total,
+                created_by=request.user,
+                negative_stock_flag=negative_stock_flag,
+            )
+        except IntegrityError:
+            if client_uuid:
+                existing = Sale.objects.filter(client_uuid=client_uuid).first()
+                if existing:
+                    return Response(
+                        {"id": existing.id, "total": existing.total, "negative_stock_flag": existing.negative_stock_flag},
+                        status=status.HTTP_201_CREATED,
+                    )
+            raise
 
         for line in data["lines"]:
             unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])
@@ -82,6 +117,15 @@ class SaleCreateView(APIView):
                 tab=tab,
             )
 
+        if negative_stock_flag:
+            AuditLog.objects.create(
+                user=request.user,
+                action="NEGATIVE_STOCK_SALE",
+                entity="Sale",
+                entity_id=str(sale.id),
+                metadata={"shift_id": shift.id, "total": total},
+            )
+
         AuditLog.objects.create(
             user=request.user,
             action="SALE_CREATE",
@@ -90,7 +134,10 @@ class SaleCreateView(APIView):
             metadata={"total": total, "shift_id": shift.id},
         )
 
-        return Response({"id": sale.id, "total": total}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"id": sale.id, "total": total, "negative_stock_flag": negative_stock_flag},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class SaleVoidView(APIView):
@@ -110,9 +157,15 @@ class SaleVoidView(APIView):
                 {"code": "FORBIDDEN", "message": "Manager/Owner required"},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if not verify_pin(user, serializer.validated_data["pin"]):
+        try:
+            if not verify_pin(user, serializer.validated_data["pin"]):
+                return Response(
+                    {"code": "INVALID_PIN", "message": "Manager PIN is incorrect"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+        except PermissionError:
             return Response(
-                {"code": "INVALID_PIN", "message": "Manager PIN is incorrect"},
+                {"code": "PIN_LOCKED", "message": "PIN is temporarily locked"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         if sale.voided_at:
