@@ -40,8 +40,10 @@ class SaleCreatedSerializer(serializers.Serializer):
 
 
 class VoidSaleSerializer(serializers.Serializer):
-    pin = serializers.CharField(help_text="Manager/owner PIN", style={"input_type": "password"})
+    pin = serializers.CharField(required=False, allow_blank=True, help_text="Manager/owner PIN", style={"input_type": "password"})
     reason = serializers.CharField()
+    approver_username = serializers.CharField(required=False)
+    approver_pin = serializers.CharField(required=False, style={"input_type": "password"})
 
 
 class VoidResponseSerializer(serializers.Serializer):

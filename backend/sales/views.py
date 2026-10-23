@@ -16,6 +16,7 @@ from shifts.models import Shift
 from stock.models import StockMovement
 from stock.services import current_stock
 from tabs.models import Tab
+from users.models import User
 from users.utils import verify_pin
 
 from .serializers import (
@@ -149,37 +150,47 @@ class SaleVoidView(APIView):
     def post(self, request, pk):
         serializer = VoidSaleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         sale = get_object_or_404(Sale, pk=pk)
 
-        user = request.user
-        if user.role not in ("OWNER", "MANAGER"):
-            return Response(
-                {"code": "FORBIDDEN", "message": "Manager/Owner required"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        try:
-            if not verify_pin(user, serializer.validated_data["pin"]):
-                return Response(
-                    {"code": "INVALID_PIN", "message": "Manager PIN is incorrect"},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-        except PermissionError:
-            return Response(
-                {"code": "PIN_LOCKED", "message": "PIN is temporarily locked"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if sale.voided_at:
-            return Response(
-                {"code": "ALREADY_VOIDED", "message": "Sale is already voided"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        caller = request.user
+        approver = None
+        override = False
 
-        sale.voided_by = user
-        sale.void_reason = serializer.validated_data["reason"]
+        if data.get("approver_username") and data.get("approver_pin") is not None:
+            try:
+                approver = User.objects.get(username=data["approver_username"], is_active=True)
+            except User.DoesNotExist:
+                return Response({"code": "APPROVER_INVALID", "message": "Approver not found"}, status=status.HTTP_403_FORBIDDEN)
+            if approver == caller:
+                return Response({"code": "APPROVER_SAME_AS_CALLER", "message": "Approver must be different"}, status=status.HTTP_403_FORBIDDEN)
+            if approver.role not in ("OWNER", "MANAGER"):
+                return Response({"code": "APPROVER_NOT_AUTHORIZED", "message": "Approver must be manager/owner"}, status=status.HTTP_403_FORBIDDEN)
+            try:
+                if not verify_pin(approver, data["approver_pin"]):
+                    return Response({"code": "INVALID_PIN", "message": "Approver PIN incorrect"}, status=status.HTTP_403_FORBIDDEN)
+            except PermissionError:
+                return Response({"code": "PIN_LOCKED", "message": "PIN is temporarily locked"}, status=status.HTTP_403_FORBIDDEN)
+            override = True
+        else:
+            if caller.role not in ("OWNER", "MANAGER"):
+                return Response({"code": "FORBIDDEN", "message": "Manager/Owner required"}, status=status.HTTP_403_FORBIDDEN)
+            try:
+                if not verify_pin(caller, data.get("pin") or ""):
+                    return Response({"code": "INVALID_PIN", "message": "Manager PIN is incorrect"}, status=status.HTTP_403_FORBIDDEN)
+            except PermissionError:
+                return Response({"code": "PIN_LOCKED", "message": "PIN is temporarily locked"}, status=status.HTTP_403_FORBIDDEN)
+
+        if sale.voided_at:
+            return Response({"code": "ALREADY_VOIDED", "message": "Sale is already voided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        sale.voided_by = caller
+        sale.void_reason = data.get("reason", "")
         sale.voided_at = timezone.now()
         sale.save()
 
+        actor = approver if override else caller
         for line in sale.lines.all():
             StockMovement.objects.create(
                 uuid=uuid.uuid4(),
@@ -188,15 +199,15 @@ class SaleVoidView(APIView):
                 qty_base=line.item_unit.qty_in_base_unit * line.qty,
                 type=StockMovement.VOID_REVERSAL,
                 reason=f"VOID {sale.id}",
-                created_by=user,
+                created_by=actor,
             )
 
         AuditLog.objects.create(
-            user=user,
-            action="VOID",
+            user=caller,
+            action="VOID_OVERRIDE" if override else "VOID",
             entity="Sale",
             entity_id=str(sale.id),
-            metadata={"reason": sale.void_reason},
+            metadata={"reason": sale.void_reason, "approver_id": approver.id if approver else None},
         )
 
-        return Response({"status": "voided"}, status=status.HTTP_200_OK)
+        return Response({"status": "voided", "override": override}, status=status.HTTP_200_OK)
