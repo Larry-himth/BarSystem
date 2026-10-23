@@ -13,7 +13,7 @@ and `docs/` for architecture, data model, API, and testing notes.
 bar-pos/
 ├── backend/      Django 5 + DRF REST API
 ├── worker-web/   React + Vite PWA used at the counter
-├── boss-app/     Expo React Native app used by the owner
+├── boss-app/     Flutter app (Android-first) used by the owner
 └── docs/         Architecture, data model, API, and testing documentation
 ```
 
