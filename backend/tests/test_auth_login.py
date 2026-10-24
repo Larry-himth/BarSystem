@@ -6,7 +6,9 @@ from rest_framework.test import APIClient
 @pytest.mark.django_db
 def test_login_succeeds_with_invalid_bearer_token():
     User = get_user_model()
-    User.objects.create_user(username="bolt", password="x", pin_hash="4321")
+    from django.contrib.auth.hashers import make_password
+
+    User.objects.create_user(username="bolt", password="x", pin_hash=make_password("4321"))
 
     client = APIClient()
     response = client.post(

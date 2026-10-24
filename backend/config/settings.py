@@ -108,3 +108,5 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'POS and Management System API for a single bar in Uganda',
     'VERSION': '1.0.0',
 }
+
+ALLOWED_HOSTS = list(set(ALLOWED_HOSTS + ['testserver']))

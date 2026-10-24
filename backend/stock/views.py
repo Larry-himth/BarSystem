@@ -35,6 +35,8 @@ class StockMovementCreateView(APIView):
 
         item = get_object_or_404(Item, pk=data["item_id"])
         shift = get_object_or_404(Shift, pk=data["shift_id"])
+        if shift.status != Shift.OPEN:
+            return Response({"code": "SHIFT_NOT_OPEN", "message": "Shift not open"}, status=status.HTTP_400_BAD_REQUEST)
 
         qty_base = data["qty_base"]
         if data["type"] in ("SPILLAGE", "COMP"):
