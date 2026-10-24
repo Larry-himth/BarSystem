@@ -21,19 +21,29 @@ class PaymentInputSerializer(serializers.Serializer):
 
 
 class SaleCreateSerializer(serializers.Serializer):
+    client_uuid = serializers.UUIDField(required=False)
     shift_id = serializers.IntegerField()
     lines = SaleLineInputSerializer(many=True, allow_empty=False)
     payments = PaymentInputSerializer(many=True, allow_empty=False)
+
+    def validate_lines(self, value):
+        for line in value:
+            if line.get("qty", 0) <= 0:
+                raise serializers.ValidationError("Quantities must be positive")
+        return value
 
 
 class SaleCreatedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     total = serializers.IntegerField()
+    negative_stock_flag = serializers.BooleanField(required=False)
 
 
 class VoidSaleSerializer(serializers.Serializer):
-    pin = serializers.CharField(help_text="Manager/owner PIN", style={"input_type": "password"})
+    pin = serializers.CharField(required=False, allow_blank=True, help_text="Manager/owner PIN", style={"input_type": "password"})
     reason = serializers.CharField()
+    approver_username = serializers.CharField(required=False)
+    approver_pin = serializers.CharField(required=False, style={"input_type": "password"})
 
 
 class VoidResponseSerializer(serializers.Serializer):

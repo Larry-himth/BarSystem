@@ -6,6 +6,7 @@ from django.db import models
 
 class Sale(models.Model):
     uuid = models.UUIDField(unique=True, default=uuid.uuid4)
+    client_uuid = models.UUIDField(unique=True, null=True, blank=True)
     shift = models.ForeignKey("shifts.Shift", on_delete=models.PROTECT, related_name="sales")
     total = models.IntegerField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -19,6 +20,7 @@ class Sale(models.Model):
     )
     void_reason = models.TextField(blank=True)
     voided_at = models.DateTimeField(null=True, blank=True)
+    negative_stock_flag = models.BooleanField(default=False)
 
     def __str__(self):
         return f"Sale {self.id} {self.total}"
