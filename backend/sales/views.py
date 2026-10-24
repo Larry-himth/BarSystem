@@ -190,7 +190,6 @@ class SaleVoidView(APIView):
         sale.voided_at = timezone.now()
         sale.save()
 
-        actor = approver if override else caller
         for line in sale.lines.all():
             StockMovement.objects.create(
                 uuid=uuid.uuid4(),
@@ -199,7 +198,7 @@ class SaleVoidView(APIView):
                 qty_base=line.item_unit.qty_in_base_unit * line.qty,
                 type=StockMovement.VOID_REVERSAL,
                 reason=f"VOID {sale.id}",
-                created_by=actor,
+                created_by=caller,
             )
 
         AuditLog.objects.create(

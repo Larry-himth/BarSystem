@@ -11,8 +11,10 @@ from stock.models import StockMovement
 
 def make_sale(owner_pin="9999"):
     User = get_user_model()
+    from django.contrib.auth.hashers import make_password
+
     owner = User.objects.create_user(
-        username="void-owner", password="x", role=User.OWNER, pin_hash=owner_pin
+        username="void-owner", password="x", role=User.OWNER, pin_hash=make_password(owner_pin)
     )
     bartender = User.objects.create_user(username="void-bartender", password="x", role=User.BARTENDER)
     item = Item.objects.create(
@@ -89,8 +91,13 @@ def test_voiding_already_voided_sale_is_rejected():
 @pytest.mark.django_db
 def test_void_non_existent_sale_returns_404():
     User = get_user_model()
+    from django.contrib.auth.hashers import make_password
+
     owner = User.objects.create_user(
-        username="void-owner-404", password="x", role=User.OWNER, pin_hash="9999"
+        username="void-owner-404",
+        password="x",
+        role=User.OWNER,
+        pin_hash=make_password("9999"),
     )
     client = APIClient()
     client.force_authenticate(user=owner)

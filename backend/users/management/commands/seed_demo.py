@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 
 from catalog.models import Item, ItemUnit
@@ -19,7 +20,7 @@ class Command(BaseCommand):
             },
         )
         owner.set_password("owner123")
-        owner.pin_hash = "1234"
+        owner.pin_hash = make_password("1234")
         owner.save()
 
         manager, _ = User.objects.get_or_create(
@@ -27,7 +28,7 @@ class Command(BaseCommand):
             defaults={"name": "Manager", "role": User.MANAGER, "language": User.EN, "is_active": True},
         )
         manager.set_password("manager123")
-        manager.pin_hash = "2222"
+        manager.pin_hash = make_password("2222")
         manager.save()
 
         for uname, name, pin in [("b1", "Bartender 1", "1111"), ("b2", "Bartender 2", "3333")]:
@@ -36,7 +37,7 @@ class Command(BaseCommand):
                 defaults={"name": name, "role": User.BARTENDER, "language": User.EN, "is_active": True},
             )
             u.set_password(pin)
-            u.pin_hash = pin
+            u.pin_hash = make_password(pin)
             u.save()
 
         items_data = [

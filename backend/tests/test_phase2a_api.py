@@ -12,7 +12,9 @@ from stock.models import StockMovement
 @pytest.mark.django_db
 def test_pin_login_and_jwt():
     User = get_user_model()
-    u = User.objects.create_user(username="b", password="x", pin_hash="1111")
+    from django.contrib.auth.hashers import make_password
+
+    u = User.objects.create_user(username="b", password="x", pin_hash=make_password("1111"))
     c = APIClient()
     r = c.post("/api/v1/auth/login/", {"username": "b", "pin": "1111"}, format="json")
     assert r.status_code == 200
@@ -66,7 +68,9 @@ def test_sell_creates_sale_and_negative_movements():
 @pytest.mark.django_db
 def test_void_requires_manager_pin_and_writes_reversing():
     User = get_user_model()
-    owner = User.objects.create_user(username="o", password="x", role="OWNER", pin_hash="9999")
+    from django.contrib.auth.hashers import make_password
+
+    owner = User.objects.create_user(username="o", password="x", role="OWNER", pin_hash=make_password("9999"))
     b = User.objects.create_user(username="b4", password="x", role="BARTENDER")
     item = Item.objects.create(name_en="S", name_sw="S", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)
@@ -103,7 +107,9 @@ def test_delivery_spillage_comp_create_movements():
 @pytest.mark.django_db
 def test_audit_log_written_on_void():
     User = get_user_model()
-    owner = User.objects.create_user(username="oa", password="x", role="OWNER", pin_hash="8888")
+    from django.contrib.auth.hashers import make_password
+
+    owner = User.objects.create_user(username="oa", password="x", role="OWNER", pin_hash=make_password("8888"))
     b = User.objects.create_user(username="ba", password="x", role="BARTENDER")
     item = Item.objects.create(name_en="A", name_sw="A", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)

@@ -10,7 +10,9 @@ from shifts.models import Shift
 @pytest.mark.django_db
 def test_lockout_survives_transaction_and_correct_pin_still_rejected():
     User = get_user_model()
-    owner = User.objects.create_user(username="lock2", password="x", role=User.OWNER, pin_hash="1234")
+    from django.contrib.auth.hashers import make_password
+
+    owner = User.objects.create_user(username="lock2", password="x", role=User.OWNER, pin_hash=make_password("1234"))
     b = User.objects.create_user(username="lock2b", password="x", role=User.BARTENDER)
     item = Item.objects.create(name_en="L2", name_sw="L2", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)

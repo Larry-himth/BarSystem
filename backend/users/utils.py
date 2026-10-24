@@ -35,9 +35,6 @@ def verify_pin(user, pin):
     try:
         identify_hasher(stored)
     except ValueError:
-        if stored == pin:
-            reset_pin_failures(user)
-            return True
         record_pin_failure(user)
         return False
     if check_password(pin, stored):

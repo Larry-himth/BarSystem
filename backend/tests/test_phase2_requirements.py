@@ -13,7 +13,9 @@ from stock.models import StockMovement
 @pytest.mark.django_db
 def test_void_with_wrong_pin_is_rejected():
     User = get_user_model()
-    owner = User.objects.create_user(username="ow", password="x", role=User.OWNER, pin_hash="9999")
+    from django.contrib.auth.hashers import make_password
+
+    owner = User.objects.create_user(username="ow", password="x", role=User.OWNER, pin_hash=make_password("9999"))
     b = User.objects.create_user(username="bw", password="x", role=User.BARTENDER)
     item = Item.objects.create(name_en="X", name_sw="X", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)
@@ -31,7 +33,9 @@ def test_void_with_wrong_pin_is_rejected():
 @pytest.mark.django_db
 def test_void_twice_rejected():
     User = get_user_model()
-    owner = User.objects.create_user(username="ow2", password="x", role=User.OWNER, pin_hash="9999")
+    from django.contrib.auth.hashers import make_password
+
+    owner = User.objects.create_user(username="ow2", password="x", role=User.OWNER, pin_hash=make_password("9999"))
     b = User.objects.create_user(username="bw2", password="x", role=User.BARTENDER)
     item = Item.objects.create(name_en="Y", name_sw="Y", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)
@@ -50,7 +54,9 @@ def test_void_twice_rejected():
 @pytest.mark.django_db
 def test_bartender_void_gets_403():
     User = get_user_model()
-    b = User.objects.create_user(username="bw3", password="x", role=User.BARTENDER, pin_hash="1111")
+    from django.contrib.auth.hashers import make_password
+
+    b = User.objects.create_user(username="bw3", password="x", role=User.BARTENDER, pin_hash=make_password("1111"))
     item = Item.objects.create(name_en="Z", name_sw="Z", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)
     shift = Shift.objects.create(opened_by=b, status=Shift.OPEN)
@@ -103,7 +109,9 @@ def test_bartender_cannot_create_adjustment():
 @pytest.mark.django_db
 def test_pin_lockout_after_five_failures():
     User = get_user_model()
-    owner = User.objects.create_user(username="lock", password="x", role=User.OWNER, pin_hash="1234")
+    from django.contrib.auth.hashers import make_password
+
+    owner = User.objects.create_user(username="lock", password="x", role=User.OWNER, pin_hash=make_password("1234"))
     b = User.objects.create_user(username="lockb", password="x", role=User.BARTENDER)
     item = Item.objects.create(name_en="L", name_sw="L", category=Item.BEER, base_unit=Item.BOTTLE, buy_price=1, par_level=1)
     unit = ItemUnit.objects.create(item=item, label="Bottle", qty_in_base_unit=1, sell_price=1, can_sell=True)
