@@ -20,9 +20,19 @@ class ShiftCountSerializer(serializers.Serializer):
     counts = CountLineSerializer(many=True, allow_empty=False)
 
 
+class ShiftCloseSerializer(serializers.Serializer):
+    counts = CountLineSerializer(many=True, allow_empty=False)
+    pin = serializers.CharField(required=False, allow_blank=True)
+
+
 class ShiftCountResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     variances = serializers.ListField(child=serializers.DictField(), required=False)
+
+
+class ShiftCloseResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    items = serializers.ListField(child=serializers.DictField())
 
 
 class ShiftSubmitResponseSerializer(serializers.Serializer):

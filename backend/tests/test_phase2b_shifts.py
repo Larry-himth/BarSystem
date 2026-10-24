@@ -25,22 +25,22 @@ def test_variance_arithmetic_opening_sold_delivery_counted():
         shift=shift,
         item=item,
         type=StockMovement.OPENING,
-        qty=10,
-        unit_cost=1000,
+        qty_base=10,
+        created_by=b,
     )
     StockMovement.objects.create(
         shift=shift,
         item=item,
         type=StockMovement.SALE,
-        qty=-3,
-        unit_cost=1000,
+        qty_base=-3,
+        created_by=b,
     )
     StockMovement.objects.create(
         shift=shift,
         item=item,
         type=StockMovement.DELIVERY,
-        qty=0,
-        unit_cost=1000,
+        qty_base=0,
+        created_by=b,
     )
     c = APIClient()
     c.force_authenticate(user=b)
@@ -71,7 +71,7 @@ def test_close_shift_requires_count_for_active_items():
     shift = Shift.objects.create(opened_by=b, status=Shift.OPEN)
     from stock.models import StockMovement
 
-    StockMovement.objects.create(shift=shift, item=item, type=StockMovement.OPENING, qty=5, unit_cost=1000)
+    StockMovement.objects.create(shift=shift, item=item, type=StockMovement.OPENING, qty_base=5, created_by=b)
     c = APIClient()
     c.force_authenticate(user=b)
     r = c.post(f"/api/v1/shifts/{shift.id}/close/", {"counts": [], "pin": ""}, format="json")
@@ -108,7 +108,10 @@ def test_submitted_shift_blocks_new_sales_deliveries_and_second_close():
     c.force_authenticate(user=b)
     rs = c.post("/api/v1/sales/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}], "payments": [{"method": "CASH", "amount": 3000}]}, format="json")
     assert rs.status_code in (400, 403)
-    rd = c.post("/api/v1/deliveries/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}]}, format="json")
+    # Try to deliver via stock movements if endpoint exists; otherwise expect blocked
+    rd = c.post("/api/v1/stock-movements/", {"shift_id": shift.id, "item_id": item.id, "type": "DELIVERY", "qty_base": 1}, format="json")
+    if rd.status_code == 404:
+        rd = c.post("/api/v1/deliveries/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}]}, format="json")
     assert rd.status_code in (400, 403)
     c.force_authenticate(user=owner)
     rc = c.post(f"/api/v1/shifts/{shift.id}/close/", {"counts": [{"item_id": item.id, "counted_qty": 0}], "pin": ""}, format="json")
@@ -130,7 +133,7 @@ def test_close_ignores_client_supplied_expected_and_variance():
     shift = Shift.objects.create(opened_by=b, status=Shift.OPEN)
     from stock.models import StockMovement
 
-    StockMovement.objects.create(shift=shift, item=item, type=StockMovement.OPENING, qty=5, unit_cost=2000)
+    StockMovement.objects.create(shift=shift, item=item, type=StockMovement.OPENING, qty_base=5, created_by=b)
     c = APIClient()
     c.force_authenticate(user=b)
     r = c.post(

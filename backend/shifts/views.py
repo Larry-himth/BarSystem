@@ -20,6 +20,8 @@ from .serializers import (
     MomoConfirmSerializer,
     OpenShiftSerializer,
     ShiftApproveResponseSerializer,
+    ShiftCloseResponseSerializer,
+    ShiftCloseSerializer,
     ShiftCountResponseSerializer,
     ShiftCountSerializer,
     ShiftDisputeResponseSerializer,
@@ -122,6 +124,70 @@ class ShiftSubmitView(APIView):
             metadata=compute_shift_totals(shift),
         )
         return Response({"status": "submitted"}, status=status.HTTP_200_OK)
+
+
+class ShiftCloseView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(request=ShiftCloseSerializer, responses={200: ShiftCloseResponseSerializer})
+    @transaction.atomic
+    def post(self, request, pk):
+        serializer = ShiftCloseSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        shift = get_object_or_404(Shift, pk=pk)
+        if shift.status != Shift.OPEN:
+            return Response({"code": "SHIFT_NOT_OPEN", "message": "Shift not open"}, status=status.HTTP_400_BAD_REQUEST)
+
+        counts_map = {int(c["item_id"]): int(c["counted_qty"]) for c in data["counts"]}
+        active_items = []
+        for move in StockMovement.objects.filter(shift=shift):
+            if move.item_id not in active_items:
+                active_items.append(move.item_id)
+        if len(active_items) == 0:
+            return Response({"code": "BAD_REQUEST", "message": "No active items"}, status=status.HTTP_400_BAD_REQUEST)
+        for item_id in active_items:
+            if item_id not in counts_map:
+                return Response({"code": "MISSING_COUNT", "message": "Missing count"}, status=status.HTTP_400_BAD_REQUEST)
+
+        items_resp = []
+        for item_id in active_items:
+            item = get_object_or_404(Item, pk=item_id)
+            counted_qty = counts_map[item_id]
+            expected_qty = get_expected_stock(item, shift)
+            variance_qty = counted_qty - expected_qty
+            variance_value = variance_qty * (item.buy_price or 0)
+            StockMovement.objects.create(
+                uuid=uuid.uuid4(),
+                item=item,
+                shift=shift,
+                qty_base=counted_qty,
+                type=StockMovement.CLOSING_COUNT,
+                reason="",
+                created_by=request.user,
+            )
+            items_resp.append(
+                {
+                    "item_id": item_id,
+                    "expected_qty": expected_qty,
+                    "counted_qty": counted_qty,
+                    "variance_qty": variance_qty,
+                    "variance_value": variance_value,
+                }
+            )
+
+        shift.status = Shift.SUBMITTED
+        shift.submitted_at = timezone.now()
+        shift.closed_at = timezone.now()
+        shift.save()
+        AuditLog.objects.create(
+            user=request.user,
+            action="SHIFT_CLOSE",
+            entity="Shift",
+            entity_id=str(shift.id),
+            metadata={"items": len(items_resp)},
+        )
+        return Response({"status": "submitted", "items": items_resp}, status=status.HTTP_200_OK)
 
 
 class ShiftApproveView(APIView):
