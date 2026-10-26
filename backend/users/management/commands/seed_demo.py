@@ -3,6 +3,8 @@ from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 
 from catalog.models import Item, ItemUnit
+from shifts.models import Shift
+from stock.models import StockMovement
 
 
 class Command(BaseCommand):
@@ -53,6 +55,7 @@ class Command(BaseCommand):
             ("Soda", "Soda", Item.SOFT_DRINK, Item.BOTTLE, 1000, 1500, 24),
         ]
 
+        created_items = []
         for name_en, name_sw, cat, base, buy, sell_bottle, par in items_data:
             item, created = Item.objects.get_or_create(
                 name_en=name_en,
@@ -77,5 +80,26 @@ class Command(BaseCommand):
                         label="Tot",
                         defaults={"qty_in_base_unit": 25, "sell_price": 1500, "can_sell": True, "can_buy": False},
                     )
+            created_items.append(item)
+
+        shift, _ = Shift.objects.get_or_create(
+            status=Shift.OPEN,
+            defaults={"opened_by": owner},
+        )
+        if shift.opened_by_id is None:
+            shift.opened_by = owner
+            shift.save()
+
+        for item in created_items:
+            if not StockMovement.objects.filter(shift=shift, item=item, type=StockMovement.OPENING).exists():
+                qty = item.par_level if item.par_level else 24
+                StockMovement.objects.create(
+                    item=item,
+                    shift=shift,
+                    qty_base=qty,
+                    type=StockMovement.OPENING,
+                    reason="seed",
+                    created_by=owner,
+                )
 
         self.stdout.write(self.style.SUCCESS("Seeded demo data (owner/manager/b1/b2 with PINs 1234/2222/1111/3333)"))
