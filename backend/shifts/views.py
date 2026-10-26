@@ -56,7 +56,7 @@ class OpenShiftView(APIView):
             entity_id=str(shift.id),
             metadata={},
         )
-        return Response({"id": shift.id, "status": shift.status}, status=status.HTTP_201_CREATED)
+        return Response({"id": shift.id, "status": shift.status, "code": "SHIFT_OPENED"}, status=status.HTTP_201_CREATED)
 
 
 class ShiftCountView(APIView):
@@ -123,7 +123,7 @@ class ShiftSubmitView(APIView):
             entity_id=str(shift.id),
             metadata=compute_shift_totals(shift),
         )
-        return Response({"status": "submitted"}, status=status.HTTP_200_OK)
+        return Response({"status": "submitted", "code": "SHIFT_SUBMITTED"}, status=status.HTTP_200_OK)
 
 
 class ShiftCloseView(APIView):
@@ -187,7 +187,7 @@ class ShiftCloseView(APIView):
             entity_id=str(shift.id),
             metadata={"items": len(items_resp)},
         )
-        return Response({"status": "submitted", "items": items_resp}, status=status.HTTP_200_OK)
+        return Response({"status": "submitted", "code": "SHIFT_CLOSED", "items": items_resp}, status=status.HTTP_200_OK)
 
 
 class ShiftApproveView(APIView):
@@ -209,7 +209,7 @@ class ShiftApproveView(APIView):
             entity_id=str(shift.id),
             metadata={},
         )
-        return Response({"status": "approved"}, status=status.HTTP_200_OK)
+        return Response({"status": "approved", "code": "SHIFT_APPROVED"}, status=status.HTTP_200_OK)
 
 
 class ShiftDisputeView(APIView):
@@ -233,7 +233,7 @@ class ShiftDisputeView(APIView):
             entity_id=str(shift.id),
             metadata={"note": shift.notes},
         )
-        return Response({"status": "disputed"}, status=status.HTTP_200_OK)
+        return Response({"status": "disputed", "code": "SHIFT_DISPUTED"}, status=status.HTTP_200_OK)
 
 
 class ShiftMomoConfirmView(APIView):
@@ -254,4 +254,4 @@ class ShiftMomoConfirmView(APIView):
             entity_id=str(shift.id),
             metadata={"status": serializer.validated_data["status"], "note": serializer.validated_data.get("note", "")},
         )
-        return Response({"status": "confirmed"}, status=status.HTTP_200_OK)
+        return Response({"status": "confirmed", "code": "MOMO_CONFIRMED"}, status=status.HTTP_200_OK)

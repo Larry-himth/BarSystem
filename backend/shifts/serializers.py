@@ -8,6 +8,7 @@ class OpenShiftSerializer(serializers.Serializer):
 class ShiftOpenedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class CountLineSerializer(serializers.Serializer):
@@ -21,7 +22,7 @@ class ShiftCountSerializer(serializers.Serializer):
 
 
 class ShiftCloseSerializer(serializers.Serializer):
-    counts = CountLineSerializer(many=True, allow_empty=False)
+    counts = CountLineSerializer(many=True, allow_empty=True)
     pin = serializers.CharField(required=False, allow_blank=True)
 
 
@@ -32,15 +33,18 @@ class ShiftCountResponseSerializer(serializers.Serializer):
 
 class ShiftCloseResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
     items = serializers.ListField(child=serializers.DictField())
 
 
 class ShiftSubmitResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class ShiftApproveResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class ShiftDisputeSerializer(serializers.Serializer):
@@ -49,6 +53,7 @@ class ShiftDisputeSerializer(serializers.Serializer):
 
 class ShiftDisputeResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class MomoConfirmSerializer(serializers.Serializer):
@@ -58,3 +63,4 @@ class MomoConfirmSerializer(serializers.Serializer):
 
 class MomoConfirmResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
