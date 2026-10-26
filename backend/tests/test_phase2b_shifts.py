@@ -110,15 +110,18 @@ def test_submitted_shift_blocks_new_sales_deliveries_and_second_close():
     c = APIClient()
     c.force_authenticate(user=b)
     rs = c.post("/api/v1/sales/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}], "payments": [{"method": "CASH", "amount": 3000}]}, format="json")
-    assert rs.status_code in (400, 403)
+    assert rs.status_code == 400
+    assert rs.data["code"] == "SHIFT_NOT_OPEN"
     # Try to deliver via stock movements if endpoint exists; otherwise expect blocked
     rd = c.post("/api/v1/stock-movements/", {"shift_id": shift.id, "item_id": item.id, "type": "DELIVERY", "qty_base": 1}, format="json")
     if rd.status_code == 404:
         rd = c.post("/api/v1/deliveries/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}]}, format="json")
-    assert rd.status_code in (400, 403)
+    assert rd.status_code == 400
+    assert rd.data["code"] == "SHIFT_NOT_OPEN"
     c.force_authenticate(user=owner)
     rc = c.post(f"/api/v1/shifts/{shift.id}/close/", {"counts": [{"item_id": item.id, "counted_qty": 0}], "pin": ""}, format="json")
-    assert rc.status_code in (400, 403)
+    assert rc.status_code == 400
+    assert rc.data["code"] == "SHIFT_NOT_OPEN"
 
 
 @pytest.mark.django_db
