@@ -1,9 +1,9 @@
-from decimal import Decimal
-
 from django.db.models import Sum
 
 from sales.models import Payment, Sale
 from stock.models import StockMovement
+
+from .models import StockCount
 
 
 def get_expected_stock(item, shift):
@@ -12,6 +12,61 @@ def get_expected_stock(item, shift):
         or 0
     )
     return total
+
+
+def ledger_balance_at(item, at):
+    return (
+        StockMovement.objects.filter(item=item, created_at__lte=at).aggregate(
+            total=Sum("qty_base")
+        )["total"]
+        or 0
+    )
+
+
+def ledger_balance_at_shift_open(item, shift):
+    prior_balance = (
+        StockMovement.objects.filter(item=item, created_at__lt=shift.opened_at).aggregate(
+            total=Sum("qty_base")
+        )["total"]
+        or 0
+    )
+    opening_movements = (
+        StockMovement.objects.filter(
+            item=item,
+            shift=shift,
+            type=StockMovement.OPENING,
+        ).aggregate(total=Sum("qty_base"))["total"]
+        or 0
+    )
+    return prior_balance + opening_movements
+
+
+def expected_stock_for_item(item, shift):
+    opening_count = StockCount.objects.filter(
+        shift=shift,
+        item=item,
+        kind=StockCount.OPENING,
+    ).first()
+    opening = (
+        opening_count.counted_qty
+        if opening_count is not None
+        else ledger_balance_at_shift_open(item, shift)
+    )
+    movement_total = (
+        StockMovement.objects.filter(
+            item=item,
+            shift=shift,
+            type__in=[
+                StockMovement.DELIVERY,
+                StockMovement.SALE,
+                StockMovement.SPILLAGE,
+                StockMovement.COMP,
+                StockMovement.VOID_REVERSAL,
+            ],
+        ).aggregate(total=Sum("qty_base"))["total"]
+        or 0
+    )
+    return opening + movement_total
 
 
 def compute_shift_totals(shift):
@@ -59,6 +114,22 @@ def serialize_shift_summary(shift):
     }
 
 
+def _empty_item_row(item):
+    return {
+        "item": item,
+        "opening": 0,
+        "deliveries": 0,
+        "sales": 0,
+        "voids": 0,
+        "spillage": 0,
+        "comps": 0,
+        "adjustments": 0,
+        "counted": 0,
+        "opening_count": None,
+        "closing_count": None,
+    }
+
+
 def build_shift_report(shift):
     items_by_id = {}
     user_totals = {}
@@ -69,23 +140,8 @@ def build_shift_report(shift):
         .order_by("created_at", "id")
     )
     for move in movements:
-        row = items_by_id.setdefault(
-            move.item_id,
-            {
-                "item": move.item,
-                "opening": 0,
-                "deliveries": 0,
-                "sales": 0,
-                "voids": 0,
-                "spillage": 0,
-                "comps": 0,
-                "adjustments": 0,
-                "counted": 0,
-            },
-        )
-        if move.type == StockMovement.OPENING:
-            row["opening"] += move.qty_base
-        elif move.type == StockMovement.DELIVERY:
+        row = items_by_id.setdefault(move.item_id, _empty_item_row(move.item))
+        if move.type == StockMovement.DELIVERY:
             row["deliveries"] += move.qty_base
         elif move.type == StockMovement.SALE:
             row["sales"] += -move.qty_base
@@ -97,8 +153,6 @@ def build_shift_report(shift):
             row["comps"] += -move.qty_base
         elif move.type == StockMovement.ADJUSTMENT:
             row["adjustments"] += move.qty_base
-        elif move.type == StockMovement.CLOSING_COUNT:
-            row["counted"] = move.qty_base
 
         if move.type in (StockMovement.VOID_REVERSAL, StockMovement.SPILLAGE, StockMovement.COMP):
             actor = move.created_by
@@ -127,19 +181,39 @@ def build_shift_report(shift):
                 user_row["comps"] += -move.qty_base
                 user_row["comp_value"] += -move.qty_base * buy_price
 
+    counts = (
+        StockCount.objects.filter(shift=shift)
+        .select_related("item")
+        .order_by("created_at", "id")
+    )
+    for count in counts:
+        row = items_by_id.setdefault(count.item_id, _empty_item_row(count.item))
+        if count.kind == StockCount.OPENING:
+            row["opening_count"] = count
+        elif count.kind == StockCount.CLOSING:
+            row["closing_count"] = count
+
     item_rows = []
     for item_id, row in items_by_id.items():
         item = row["item"]
+        opening_count = row["opening_count"]
+        closing_count = row["closing_count"]
+        ledger_at_open = ledger_balance_at_shift_open(item, shift)
+        if opening_count is not None:
+            opening = opening_count.counted_qty
+            carry_over_variance = opening - ledger_at_open
+        else:
+            opening = ledger_at_open
+            carry_over_variance = 0
         expected = (
-            row["opening"]
+            opening
             + row["deliveries"]
-            + row["adjustments"]
             + row["voids"]
             - row["sales"]
             - row["spillage"]
             - row["comps"]
         )
-        counted = row["counted"]
+        counted = closing_count.counted_qty if closing_count is not None else 0
         variance = counted - expected
         buy_price = item.buy_price or 0
         variance_ugx = variance * buy_price
@@ -149,7 +223,8 @@ def build_shift_report(shift):
                 "name": item.name_en,
                 "name_en": item.name_en,
                 "name_sw": item.name_sw,
-                "opening": row["opening"],
+                "opening": opening,
+                "carry_over_variance": carry_over_variance,
                 "deliveries": row["deliveries"],
                 "sales": row["sales"],
                 "voids": row["voids"],

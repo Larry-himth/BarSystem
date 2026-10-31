@@ -15,7 +15,6 @@ class StockMovement(models.Model):
     COMP = "COMP"
     ADJUSTMENT = "ADJUSTMENT"
     VOID_REVERSAL = "VOID_REVERSAL"
-    CLOSING_COUNT = "CLOSING_COUNT"
 
     TYPE_CHOICES = [
         (OPENING, "Opening"),
@@ -25,7 +24,6 @@ class StockMovement(models.Model):
         (COMP, "Comp"),
         (ADJUSTMENT, "Adjustment"),
         (VOID_REVERSAL, "Void reversal"),
-        (CLOSING_COUNT, "Closing Count"),
     ]
 
     uuid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
@@ -53,3 +51,6 @@ class StockMovement(models.Model):
 
     def __str__(self):
         return f"{self.type} {self.item_id} {self.qty_base}"
+
+
+from shifts.models import StockCount

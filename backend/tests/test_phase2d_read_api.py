@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 
 from catalog.models import Item
 from sales.models import Payment, Sale
-from shifts.models import Shift
+from shifts.models import Shift, StockCount
 from stock.models import StockMovement
 
 
@@ -47,7 +47,14 @@ def test_report_item_totals_and_variance():
     StockMovement.objects.create(shift=shift, item=item, type=StockMovement.OPENING, qty_base=10, created_by=bartender)
     StockMovement.objects.create(shift=shift, item=item, type=StockMovement.DELIVERY, qty_base=5, created_by=bartender)
     StockMovement.objects.create(shift=shift, item=item, type=StockMovement.SALE, qty_base=-3, created_by=bartender)
-    StockMovement.objects.create(shift=shift, item=item, type=StockMovement.CLOSING_COUNT, qty_base=11, created_by=bartender)
+    StockCount.objects.create(
+        shift=shift,
+        item=item,
+        kind=StockCount.CLOSING,
+        counted_qty=11,
+        expected_qty=12,
+        counted_by=bartender,
+    )
 
     client = APIClient()
     client.force_authenticate(user=manager)

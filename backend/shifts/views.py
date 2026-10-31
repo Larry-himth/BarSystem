@@ -13,8 +13,9 @@ from audit.models import AuditLog
 from catalog.models import Item
 from sales.models import Payment, Sale
 from stock.models import StockMovement
+from stock.services import current_stock
 
-from .models import Shift
+from .models import Shift, StockCount
 from .serializers import (
     MomoConfirmResponseSerializer,
     MomoConfirmSerializer,
@@ -32,7 +33,8 @@ from .serializers import (
 )
 from .services import (
     build_shift_report,
-    get_expected_stock,
+    expected_stock_for_item,
+    ledger_balance_at,
     serialize_shift_summary,
 )
 
@@ -128,7 +130,17 @@ class ShiftCountView(APIView):
         for line in data["counts"]:
             item = get_object_or_404(Item, pk=line["item_id"])
             counted_qty = int(line["counted_qty"])
-            expected_qty = get_expected_stock(item, shift)
+            expected_qty = current_stock(item)
+            StockCount.objects.update_or_create(
+                shift=shift,
+                item=item,
+                kind=data["type"],
+                defaults={
+                    "counted_qty": counted_qty,
+                    "expected_qty": expected_qty,
+                    "counted_by": request.user,
+                },
+            )
             if not is_bartender:
                 variances.append(
                     {
@@ -138,15 +150,6 @@ class ShiftCountView(APIView):
                         "variance_qty": counted_qty - expected_qty,
                     }
                 )
-            StockMovement.objects.create(
-                uuid=uuid.uuid4(),
-                item=item,
-                shift=shift,
-                qty_base=counted_qty,
-                type=StockMovement.CLOSING_COUNT if data["type"] == "CLOSING" else StockMovement.OPENING,
-                reason="",
-                created_by=request.user,
-            )
 
         AuditLog.objects.create(
             user=request.user,
@@ -179,17 +182,18 @@ def _complete_shift(request, shift, data, audit_action, response_code):
     for item_id in active_item_ids:
         item = get_object_or_404(Item, pk=item_id)
         counted_qty = counts_map[item_id]
-        expected_qty = get_expected_stock(item, shift)
+        expected_qty = expected_stock_for_item(item, shift)
         variance_qty = counted_qty - expected_qty
         variance_value = variance_qty * (item.buy_price or 0)
-        StockMovement.objects.create(
-            uuid=uuid.uuid4(),
-            item=item,
+        StockCount.objects.update_or_create(
             shift=shift,
-            qty_base=counted_qty,
-            type=StockMovement.CLOSING_COUNT,
-            reason="",
-            created_by=request.user,
+            item=item,
+            kind=StockCount.CLOSING,
+            defaults={
+                "counted_qty": counted_qty,
+                "expected_qty": current_stock(item),
+                "counted_by": request.user,
+            },
         )
         items_resp.append(
             {
@@ -257,6 +261,39 @@ class ShiftApproveView(APIView):
         if request.user.role not in ("OWNER", "MANAGER"):
             return Response({"code": "FORBIDDEN", "message": "Manager/Owner required"}, status=status.HTTP_403_FORBIDDEN)
         shift = get_object_or_404(Shift, pk=pk)
+        if shift.status == Shift.APPROVED:
+            return Response(
+                {"code": "SHIFT_ALREADY_APPROVED", "message": "Shift already approved"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reconciliation_reason = f"count reconciliation shift {shift.id}"
+        if StockMovement.objects.filter(
+            shift=shift,
+            type=StockMovement.ADJUSTMENT,
+            reason=reconciliation_reason,
+        ).exists():
+            return Response(
+                {"code": "SHIFT_ALREADY_APPROVED", "message": "Shift already approved"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        reconciled_at = shift.closed_at or shift.submitted_at or timezone.now()
+        closing_counts = StockCount.objects.filter(
+            shift=shift,
+            kind=StockCount.CLOSING,
+        ).select_related("item")
+        for count in closing_counts:
+            delta = count.counted_qty - ledger_balance_at(count.item, reconciled_at)
+            if delta == 0:
+                continue
+            StockMovement.objects.create(
+                uuid=uuid.uuid4(),
+                item=count.item,
+                shift=shift,
+                qty_base=delta,
+                type=StockMovement.ADJUSTMENT,
+                reason=reconciliation_reason,
+                created_by=request.user,
+            )
         shift.status = Shift.APPROVED
         shift.approved_by = request.user
         shift.save()

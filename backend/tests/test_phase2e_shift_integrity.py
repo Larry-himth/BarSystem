@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
 from catalog.models import Item
-from shifts.models import Shift
+from shifts.models import Shift, StockCount
 from stock.models import StockMovement
 
 
@@ -112,7 +112,8 @@ def test_close_requires_counts_for_every_active_item():
     assert response.data["code"] == "COUNT_INCOMPLETE"
     shift.refresh_from_db()
     assert shift.status == Shift.OPEN
-    assert not StockMovement.objects.filter(shift=shift, type=StockMovement.CLOSING_COUNT).exists()
+    assert not StockCount.objects.filter(shift=shift).exists()
+    assert StockMovement.objects.filter(shift=shift).count() == 1
 
 
 @pytest.mark.django_db
