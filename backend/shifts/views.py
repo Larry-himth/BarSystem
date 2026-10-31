@@ -26,10 +26,62 @@ from .serializers import (
     ShiftCountSerializer,
     ShiftDisputeResponseSerializer,
     ShiftDisputeSerializer,
+    ShiftListItemSerializer,
     ShiftOpenedSerializer,
+    ShiftReportResponseSerializer,
     ShiftSubmitResponseSerializer,
 )
-from .services import compute_shift_totals, get_expected_stock
+from .services import (
+    build_shift_report,
+    compute_shift_totals,
+    get_expected_stock,
+    serialize_shift_summary,
+)
+
+
+class ShiftListView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ShiftListItemSerializer
+
+    @extend_schema(responses={200: ShiftListItemSerializer(many=True)})
+    def get(self, request):
+        if request.user.role not in ("OWNER", "MANAGER"):
+            return Response(
+                {"code": "FORBIDDEN", "message": "Manager/Owner required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        shifts = Shift.objects.select_related("opened_by", "approved_by").order_by("-opened_at", "-id")
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            shifts = shifts.filter(status=status_filter.upper())
+        date_filter = request.query_params.get("date")
+        if date_filter:
+            shifts = shifts.filter(opened_at__date=date_filter)
+        start_date = request.query_params.get("start_date")
+        if start_date:
+            shifts = shifts.filter(opened_at__date__gte=start_date)
+        end_date = request.query_params.get("end_date")
+        if end_date:
+            shifts = shifts.filter(opened_at__date__lte=end_date)
+        return Response([serialize_shift_summary(shift) for shift in shifts])
+
+
+class ShiftReportView(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ShiftReportResponseSerializer
+
+    @extend_schema(responses={200: ShiftReportResponseSerializer})
+    def get(self, request, pk):
+        if request.user.role not in ("OWNER", "MANAGER"):
+            return Response(
+                {"code": "FORBIDDEN", "message": "Manager/Owner required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        shift = get_object_or_404(
+            Shift.objects.select_related("opened_by", "approved_by"),
+            pk=pk,
+        )
+        return Response(build_shift_report(shift))
 
 
 class OpenShiftView(APIView):
@@ -179,6 +231,8 @@ class ShiftCloseView(APIView):
         shift.status = Shift.SUBMITTED
         shift.submitted_at = timezone.now()
         shift.closed_at = timezone.now()
+        if "declared_cash" in data:
+            shift.declared_cash = data["declared_cash"]
         shift.save()
         AuditLog.objects.create(
             user=request.user,

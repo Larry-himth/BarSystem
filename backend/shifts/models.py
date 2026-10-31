@@ -28,6 +28,7 @@ class Shift(models.Model):
     )
     status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=OPEN)
     notes = models.TextField(blank=True)
+    declared_cash = models.IntegerField(default=0)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
