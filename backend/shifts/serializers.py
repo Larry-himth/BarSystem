@@ -22,7 +22,7 @@ class ShiftCountSerializer(serializers.Serializer):
 
 
 class ShiftCloseSerializer(serializers.Serializer):
-    counts = CountLineSerializer(many=True, allow_empty=True)
+    counts = CountLineSerializer(many=True, required=False)
     pin = serializers.CharField(required=False, allow_blank=True)
     declared_cash = serializers.IntegerField(required=False, min_value=0)
 

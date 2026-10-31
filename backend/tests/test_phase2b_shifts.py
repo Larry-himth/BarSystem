@@ -77,7 +77,7 @@ def test_close_shift_requires_count_for_active_items():
     c.force_authenticate(user=b)
     r = c.post(f"/api/v1/shifts/{shift.id}/close/", {"counts": [], "pin": ""}, format="json")
     assert r.status_code == 400
-    assert r.data["code"] == "MISSING_COUNT"
+    assert r.data["code"] == "COUNT_INCOMPLETE"
 
 
 @pytest.mark.django_db
