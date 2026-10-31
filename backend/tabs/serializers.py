@@ -8,6 +8,7 @@ class TabCreateSerializer(serializers.Serializer):
 
 class TabCreatedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
+    code = serializers.CharField(required=False)
 
 
 class TabPaymentSerializer(serializers.Serializer):
@@ -17,3 +18,4 @@ class TabPaymentSerializer(serializers.Serializer):
 
 class TabPaymentResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)

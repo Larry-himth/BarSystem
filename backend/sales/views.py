@@ -59,6 +59,15 @@ class SaleCreateView(APIView):
             unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])
             total += unit.sell_price * line["qty"]
 
+        payments_total = 0
+        for payment in data.get("payments", []):
+            payments_total += int(payment.get("amount", 0))
+        if payments_total != total:
+            return Response(
+                {"code": "PAYMENT_MISMATCH", "message": "Payments must sum to total"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         negative_stock_flag = False
         for line in data["lines"]:
             unit = get_object_or_404(ItemUnit, pk=line["item_unit_id"])

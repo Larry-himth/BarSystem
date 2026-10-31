@@ -30,7 +30,7 @@ class TabCreateView(APIView):
             entity_id=str(tab.id),
             metadata={},
         )
-        return Response({"id": tab.id}, status=status.HTTP_201_CREATED)
+        return Response({"id": tab.id, "code": "TAB_CREATED"}, status=status.HTTP_201_CREATED)
 
 
 class TabRepayView(APIView):
@@ -64,4 +64,4 @@ class TabRepayView(APIView):
             entity_id=str(tab.id),
             metadata={"amount": serializer.validated_data["amount"]},
         )
-        return Response({"status": "recorded"}, status=status.HTTP_200_OK)
+        return Response({"status": "recorded", "code": "TAB_PAYMENT_RECORDED"}, status=status.HTTP_200_OK)

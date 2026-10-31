@@ -31,27 +31,28 @@ def test_variance_arithmetic_opening_sold_delivery_counted():
     StockMovement.objects.create(
         shift=shift,
         item=item,
-        type=StockMovement.SALE,
-        qty_base=-3,
+        type=StockMovement.DELIVERY,
+        qty_base=5,
         created_by=b,
     )
     StockMovement.objects.create(
         shift=shift,
         item=item,
-        type=StockMovement.DELIVERY,
-        qty_base=0,
+        type=StockMovement.SALE,
+        qty_base=-3,
         created_by=b,
     )
     c = APIClient()
     c.force_authenticate(user=b)
     r = c.post(
         f"/api/v1/shifts/{shift.id}/close/",
-        {"counts": [{"item_id": item.id, "counted_qty": 6}], "pin": ""},
+        {"counts": [{"item_id": item.id, "counted_qty": 11}], "pin": ""},
         format="json",
     )
     assert r.status_code == 200
+    assert r.data["code"] == "SHIFT_CLOSED"
     data = r.data
-    assert data["items"][0]["expected_qty"] == 7
+    assert data["items"][0]["expected_qty"] == 12
     assert data["items"][0]["variance_qty"] == -1
     assert data["items"][0]["variance_value"] == -1000
 
@@ -76,6 +77,7 @@ def test_close_shift_requires_count_for_active_items():
     c.force_authenticate(user=b)
     r = c.post(f"/api/v1/shifts/{shift.id}/close/", {"counts": [], "pin": ""}, format="json")
     assert r.status_code == 400
+    assert r.data["code"] == "COUNT_INCOMPLETE"
 
 
 @pytest.mark.django_db
@@ -87,6 +89,7 @@ def test_bartender_cannot_approve_shift():
     c.force_authenticate(user=b)
     r = c.post(f"/api/v1/shifts/{shift.id}/approve/", {}, format="json")
     assert r.status_code == 403
+    assert r.data["code"] == "FORBIDDEN"
 
 
 @pytest.mark.django_db
@@ -107,15 +110,18 @@ def test_submitted_shift_blocks_new_sales_deliveries_and_second_close():
     c = APIClient()
     c.force_authenticate(user=b)
     rs = c.post("/api/v1/sales/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}], "payments": [{"method": "CASH", "amount": 3000}]}, format="json")
-    assert rs.status_code in (400, 403)
+    assert rs.status_code == 400
+    assert rs.data["code"] == "SHIFT_NOT_OPEN"
     # Try to deliver via stock movements if endpoint exists; otherwise expect blocked
     rd = c.post("/api/v1/stock-movements/", {"shift_id": shift.id, "item_id": item.id, "type": "DELIVERY", "qty_base": 1}, format="json")
     if rd.status_code == 404:
         rd = c.post("/api/v1/deliveries/", {"shift_id": shift.id, "lines": [{"item_unit_id": unit.id, "qty": 1}]}, format="json")
-    assert rd.status_code in (400, 403)
+    assert rd.status_code == 400
+    assert rd.data["code"] == "SHIFT_NOT_OPEN"
     c.force_authenticate(user=owner)
     rc = c.post(f"/api/v1/shifts/{shift.id}/close/", {"counts": [{"item_id": item.id, "counted_qty": 0}], "pin": ""}, format="json")
-    assert rc.status_code in (400, 403)
+    assert rc.status_code == 400
+    assert rc.data["code"] == "SHIFT_NOT_OPEN"
 
 
 @pytest.mark.django_db
@@ -145,6 +151,7 @@ def test_close_ignores_client_supplied_expected_and_variance():
         format="json",
     )
     assert r.status_code == 200
+    assert r.data["code"] == "SHIFT_CLOSED"
     assert r.data["items"][0]["expected_qty"] == 5
     assert r.data["items"][0]["variance_qty"] == 0
     assert r.data["items"][0]["variance_value"] == 0
@@ -171,9 +178,11 @@ def test_submit_shift_locks_and_computes_variance():
     c = APIClient()
     c.force_authenticate(user=b)
     r = c.post("/api/v1/shifts/open/", {}, format="json")
+    assert r.status_code == 201
     sid = r.data["id"]
     r2 = c.post(f"/api/v1/shifts/{sid}/submit/", {}, format="json")
     assert r2.status_code == 200
+    assert r2.data["code"] == "SHIFT_SUBMITTED"
     from shifts.models import Shift
     assert Shift.objects.get(pk=sid).status == "SUBMITTED"
 
@@ -188,10 +197,13 @@ def test_boss_approve_dispute_momo_confirm():
     c.force_authenticate(user=owner)
     ra = c.post(f"/api/v1/shifts/{shift.id}/approve/", {}, format="json")
     assert ra.status_code == 200
+    assert ra.data["code"] == "SHIFT_APPROVED"
     rd = c.post(f"/api/v1/shifts/{shift.id}/dispute/", {"note": "x"}, format="json")
     assert rd.status_code == 200
+    assert rd.data["code"] == "SHIFT_DISPUTED"
     rm = c.post(f"/api/v1/shifts/{shift.id}/momo-confirm/", {"status": "CONFIRMED"}, format="json")
     assert rm.status_code == 200
+    assert rm.data["code"] == "MOMO_CONFIRMED"
 
 
 @pytest.mark.django_db
@@ -204,12 +216,22 @@ def test_tabs_record_repay():
     c.force_authenticate(user=b)
     rt = c.post("/api/v1/tabs/", {"customer_name": "John", "phone": "077"}, format="json")
     assert rt.status_code == 201
+    assert rt.data["code"] == "TAB_CREATED"
     tid = rt.data["id"]
     rp = c.post(f"/api/v1/tabs/{tid}/payments/", {"amount": 5000, "method": "CASH"}, format="json")
     assert rp.status_code == 200
+    assert rp.data["code"] == "TAB_PAYMENT_RECORDED"
 
 
 @pytest.mark.django_db
 def test_simulate_day_script_exists():
     import os
-    assert os.path.exists("scripts/simulate_day.py") or os.path.exists("../scripts/simulate_day.py")
+    import subprocess
+    import sys
+    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scripts", "simulate_day.py")
+    if not os.path.exists(script_path):
+        script_path = os.path.join(os.path.dirname(__file__), "..", "scripts", "simulate_day.py")
+    result = subprocess.run([sys.executable, script_path], cwd=os.path.dirname(os.path.dirname(__file__)), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    assert result.returncode != 0  # expects non-zero shortage or failure handling
+    # also ensure file exists
+    assert os.path.exists(script_path)

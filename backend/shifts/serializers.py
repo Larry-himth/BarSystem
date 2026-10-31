@@ -8,6 +8,7 @@ class OpenShiftSerializer(serializers.Serializer):
 class ShiftOpenedSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class CountLineSerializer(serializers.Serializer):
@@ -21,8 +22,9 @@ class ShiftCountSerializer(serializers.Serializer):
 
 
 class ShiftCloseSerializer(serializers.Serializer):
-    counts = CountLineSerializer(many=True, allow_empty=False)
+    counts = CountLineSerializer(many=True, required=False)
     pin = serializers.CharField(required=False, allow_blank=True)
+    declared_cash = serializers.IntegerField(required=False, min_value=0)
 
 
 class ShiftCountResponseSerializer(serializers.Serializer):
@@ -32,15 +34,18 @@ class ShiftCountResponseSerializer(serializers.Serializer):
 
 class ShiftCloseResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
     items = serializers.ListField(child=serializers.DictField())
 
 
 class ShiftSubmitResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class ShiftApproveResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class ShiftDisputeSerializer(serializers.Serializer):
@@ -49,6 +54,7 @@ class ShiftDisputeSerializer(serializers.Serializer):
 
 class ShiftDisputeResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
 
 
 class MomoConfirmSerializer(serializers.Serializer):
@@ -58,3 +64,26 @@ class MomoConfirmSerializer(serializers.Serializer):
 
 class MomoConfirmResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+    code = serializers.CharField(required=False)
+
+
+class ShiftListItemSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    opened_by = serializers.IntegerField()
+    opened_by_username = serializers.CharField()
+    opened_by_name = serializers.CharField()
+    opened_at = serializers.DateTimeField()
+    closed_at = serializers.DateTimeField(allow_null=True)
+    submitted_at = serializers.DateTimeField(allow_null=True)
+    notes = serializers.CharField()
+
+
+class ShiftReportResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    items = serializers.ListField(child=serializers.DictField())
+    expected_cash = serializers.IntegerField()
+    declared_cash = serializers.IntegerField()
+    expected_momo = serializers.IntegerField()
+    momo_refs = serializers.ListField(child=serializers.CharField())
