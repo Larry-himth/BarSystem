@@ -4,22 +4,22 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Item
-from .serializers import ItemReadSerializer
+from .serializers import BartenderItemReadSerializer, ManagerItemReadSerializer
 
 
 class ItemListView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=ItemReadSerializer(many=True))
+    @extend_schema(responses=ManagerItemReadSerializer(many=True))
     def get(self, request):
         items = (
             Item.objects.filter(is_active=True)
             .prefetch_related("units")
             .order_by("category", "name_en", "id")
         )
-        data = ItemReadSerializer(items, many=True).data
-        if request.user.role not in ("MANAGER", "OWNER"):
-            for row in data:
-                row.pop("buy_price", None)
-                row.pop("par_level", None)
-        return Response(data)
+        serializer_class = (
+            ManagerItemReadSerializer
+            if request.user.role in ("MANAGER", "OWNER")
+            else BartenderItemReadSerializer
+        )
+        return Response(serializer_class(items, many=True).data)

@@ -73,7 +73,13 @@ class Command(BaseCommand):
                 ItemUnit.objects.get_or_create(
                     item=item,
                     label="Bottle",
-                    defaults={"qty_in_base_unit": 1, "sell_price": sell_bottle, "can_sell": True, "can_buy": True},
+                    defaults={
+                        "label_sw": "Chupa",
+                        "qty_in_base_unit": 1,
+                        "sell_price": sell_bottle,
+                        "can_sell": True,
+                        "can_buy": True,
+                    },
                 )
                 if cat == Item.SPIRIT:
                     ItemUnit.objects.get_or_create(

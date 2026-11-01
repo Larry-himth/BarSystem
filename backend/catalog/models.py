@@ -49,6 +49,7 @@ class Item(models.Model):
 class ItemUnit(models.Model):
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name="units")
     label = models.CharField(max_length=64)
+    label_sw = models.CharField(max_length=64, blank=True, default="")
     qty_in_base_unit = models.IntegerField()
     sell_price = models.IntegerField()
     can_sell = models.BooleanField(default=True)

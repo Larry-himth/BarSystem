@@ -24,6 +24,7 @@ class StockItemReadSerializer(serializers.Serializer):
     item_id = serializers.IntegerField(source="id")
     name_en = serializers.CharField()
     name_sw = serializers.CharField()
+    base_unit = serializers.CharField()
     stock_base = serializers.SerializerMethodField()
     par_level = serializers.IntegerField()
     is_low = serializers.SerializerMethodField()
