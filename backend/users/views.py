@@ -7,7 +7,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from audit.models import AuditLog
 from .models import User
-from .serializers import LoginSerializer, MeSerializer
+from .serializers import LoginSerializer, MeSerializer, MeUpdateSerializer
 from .utils import verify_pin
 
 
@@ -52,7 +52,27 @@ LoginView = PinLoginView
 class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def _serialize(self, user):
+        return {"id": user.id, "username": user.username, "role": user.role, "language": user.language}
+
     @extend_schema(responses=MeSerializer)
     def get(self, request):
-        u = request.user
-        return Response({"id": u.id, "username": u.username, "name": u.name, "role": u.role})
+        return Response(self._serialize(request.user))
+
+    @extend_schema(request=MeUpdateSerializer, responses=MeSerializer)
+    def patch(self, request):
+        if set(request.data.keys()) != {"language"}:
+            return Response(
+                {"code": "INVALID_FIELDS", "message": "Only language may be updated"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = MeUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {"code": "INVALID_LANGUAGE", "message": "Language must be en or sw"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user = request.user
+        user.language = serializer.validated_data["language"]
+        user.save(update_fields=["language"])
+        return Response(self._serialize(user))

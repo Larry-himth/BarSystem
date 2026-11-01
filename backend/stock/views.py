@@ -12,7 +12,11 @@ from catalog.models import Item
 from shifts.models import Shift
 from stock.models import StockMovement
 
-from .serializers import StockMovementCreatedSerializer, StockMovementCreateSerializer
+from .serializers import (
+    StockItemReadSerializer,
+    StockMovementCreatedSerializer,
+    StockMovementCreateSerializer,
+)
 
 
 class StockMovementCreateView(APIView):
@@ -61,3 +65,17 @@ class StockMovementCreateView(APIView):
         )
 
         return Response({"status": "created"}, status=status.HTTP_201_CREATED)
+
+
+class StockListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=StockItemReadSerializer(many=True))
+    def get(self, request):
+        if request.user.role not in ("MANAGER", "OWNER"):
+            return Response(
+                {"code": "FORBIDDEN", "message": "Manager/Owner required"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        items = Item.objects.filter(is_active=True).order_by("id")
+        return Response(StockItemReadSerializer(items, many=True).data)

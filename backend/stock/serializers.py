@@ -18,3 +18,22 @@ class StockMovementCreateSerializer(serializers.Serializer):
 
 class StockMovementCreatedSerializer(serializers.Serializer):
     status = serializers.CharField()
+
+
+class StockItemReadSerializer(serializers.Serializer):
+    item_id = serializers.IntegerField(source="id")
+    name_en = serializers.CharField()
+    name_sw = serializers.CharField()
+    stock_base = serializers.SerializerMethodField()
+    par_level = serializers.IntegerField()
+    is_low = serializers.SerializerMethodField()
+
+    def get_stock_base(self, item) -> int:
+        from .services import current_stock
+
+        return current_stock(item)
+
+    def get_is_low(self, item) -> bool:
+        from .services import current_stock
+
+        return current_stock(item) < item.par_level

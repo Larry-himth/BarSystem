@@ -9,5 +9,9 @@ class LoginSerializer(serializers.Serializer):
 class MeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     username = serializers.CharField()
-    name = serializers.CharField()
     role = serializers.CharField()
+    language = serializers.CharField()
+
+
+class MeUpdateSerializer(serializers.Serializer):
+    language = serializers.ChoiceField(choices=["en", "sw"])

@@ -5,6 +5,8 @@ from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
+from stock.views import StockListView
+
 
 def health_check(request):
     from django.http import JsonResponse
@@ -16,6 +18,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/health/", health_check, name="health_check"),
     path("api/v1/auth/", include("users.urls")),
+    path("api/v1/items/", include("catalog.urls")),
+    path("api/v1/stock/", StockListView.as_view(), name="stock-list"),
     path("api/v1/shifts/", include("shifts.urls")),
     path("api/v1/sales/", include("sales.urls")),
     path("api/v1/stock-movements/", include("stock.urls")),
