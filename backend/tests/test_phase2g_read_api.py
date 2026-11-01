@@ -40,14 +40,16 @@ def add_stock(shift, item, user, movement_type, qty):
     )
 
 
-def walk_keys(value):
-    if isinstance(value, dict):
-        for key, child in value.items():
-            yield key
-            yield from walk_keys(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from walk_keys(child)
+BARTENDER_ITEM_KEYS = {"id", "name_en", "name_sw", "category", "icon", "units"}
+UNIT_KEYS = {
+    "id",
+    "label_en",
+    "label_sw",
+    "qty_in_base_unit",
+    "sell_price",
+    "can_sell",
+    "can_buy",
+}
 
 
 @pytest.mark.django_db
@@ -60,6 +62,7 @@ def test_bartender_items_hide_cost_and_quantity_fields():
         qty_in_base_unit=1,
         sell_price=3000,
         can_sell=True,
+        can_buy=True,
     )
 
     client = APIClient()
@@ -67,15 +70,12 @@ def test_bartender_items_hide_cost_and_quantity_fields():
     response = client.get("/api/v1/items/")
 
     assert response.status_code == 200
-    keys = set(walk_keys(response.data))
-    assert "buy_price" not in keys
-    assert "par_level" not in keys
-    assert "stock_base" not in keys
-    assert "quantity" not in keys
-    assert "qty" not in keys
+    assert set(response.data[0].keys()) == BARTENDER_ITEM_KEYS
+    assert set(response.data[0]["units"][0].keys()) == UNIT_KEYS
     assert response.data[0]["units"][0]["label_en"] == "Bottle"
     assert response.data[0]["units"][0]["label_sw"] == "Bottle"
     assert response.data[0]["units"][0]["qty_in_base_unit"] == 1
+    assert response.data[0]["units"][0]["can_buy"] is True
 
 
 @pytest.mark.django_db
@@ -88,8 +88,38 @@ def test_manager_items_include_cost_fields():
     response = client.get("/api/v1/items/")
 
     assert response.status_code == 200
+    assert set(response.data[0].keys()) == BARTENDER_ITEM_KEYS | {"buy_price", "par_level"}
     assert response.data[0]["buy_price"] == 1000
     assert response.data[0]["par_level"] == 10
+
+
+@pytest.mark.django_db
+def test_unit_label_sw_falls_back_to_label_when_blank_and_returns_when_set():
+    bartender = make_user("items-labels", "BARTENDER")
+    item = make_item("Labels")
+    fallback = ItemUnit.objects.create(
+        item=item,
+        label="Bottle",
+        qty_in_base_unit=1,
+        sell_price=3000,
+        can_sell=True,
+    )
+    translated = ItemUnit.objects.create(
+        item=item,
+        label="Tot",
+        label_sw="Kopo",
+        qty_in_base_unit=25,
+        sell_price=1500,
+        can_sell=True,
+    )
+
+    client = APIClient()
+    client.force_authenticate(user=bartender)
+    response = client.get("/api/v1/items/")
+    units = {unit["id"]: unit for unit in response.data[0]["units"]}
+
+    assert units[fallback.id]["label_sw"] == "Bottle"
+    assert units[translated.id]["label_sw"] == "Kopo"
 
 
 @pytest.mark.django_db
@@ -135,9 +165,11 @@ def test_manager_stock_list_marks_low_stock():
 
     assert response.status_code == 200
     rows = {row["item_id"]: row for row in response.data}
+    assert rows[low_item.id]["base_unit"] == Item.BOTTLE
     assert rows[low_item.id]["stock_base"] == 7
     assert rows[low_item.id]["par_level"] == 10
     assert rows[low_item.id]["is_low"] is True
+    assert rows[ok_item.id]["base_unit"] == Item.BOTTLE
     assert rows[ok_item.id]["stock_base"] == 12
     assert rows[ok_item.id]["is_low"] is False
 
