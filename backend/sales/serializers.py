@@ -48,3 +48,32 @@ class VoidSaleSerializer(serializers.Serializer):
 
 class VoidResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
+
+
+class SaleLineReadSerializer(serializers.Serializer):
+    label_en = serializers.CharField(source="item_unit.label")
+    label_sw = serializers.SerializerMethodField()
+    qty = serializers.IntegerField()
+    unit_price = serializers.IntegerField()
+
+    def get_label_sw(self, line) -> str:
+        return line.item_unit.label_sw or line.item_unit.label
+
+
+class PaymentReadSerializer(serializers.Serializer):
+    method = serializers.CharField()
+    amount = serializers.IntegerField()
+    momo_ref = serializers.CharField()
+
+
+class SaleListRowSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    total = serializers.IntegerField()
+    created_at = serializers.DateTimeField()
+    created_by_username = serializers.CharField(source="created_by.username")
+    is_voided = serializers.SerializerMethodField()
+    lines = SaleLineReadSerializer(many=True)
+    payments = PaymentReadSerializer(many=True)
+
+    def get_is_voided(self, sale) -> bool:
+        return sale.voided_at is not None

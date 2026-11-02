@@ -22,6 +22,7 @@ from users.utils import verify_pin
 from .serializers import (
     SaleCreateSerializer,
     SaleCreatedSerializer,
+    SaleListRowSerializer,
     VoidResponseSerializer,
     VoidSaleSerializer,
 )
@@ -29,6 +30,32 @@ from .serializers import (
 
 class SaleCreateView(APIView):
     permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=SaleListRowSerializer(many=True))
+    def get(self, request):
+        raw_shift_id = request.query_params.get("shift_id")
+        try:
+            shift_id = int(raw_shift_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "shift_id query parameter is required and must be an integer"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        shift = get_object_or_404(Shift, pk=shift_id)
+        if request.user.role not in ("MANAGER", "OWNER") and shift.status != Shift.OPEN:
+            return Response(
+                {"code": "FORBIDDEN", "message": "Bartenders may only list the open shift's sales"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        sales = (
+            Sale.objects.filter(shift=shift)
+            .select_related("created_by")
+            .prefetch_related("lines__item_unit", "payments")
+            .order_by("-created_at", "-id")[:200]
+        )
+        return Response(SaleListRowSerializer(sales, many=True).data)
 
     @extend_schema(request=SaleCreateSerializer, responses={201: SaleCreatedSerializer})
     @transaction.atomic
