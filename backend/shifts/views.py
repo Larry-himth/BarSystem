@@ -24,6 +24,7 @@ from .serializers import (
     ShiftCloseResponseSerializer,
     ShiftCloseSerializer,
     ShiftCountResponseSerializer,
+    CurrentShiftSerializer,
     ShiftCountSerializer,
     ShiftDisputeResponseSerializer,
     ShiftDisputeSerializer,
@@ -64,6 +65,21 @@ class ShiftListView(APIView):
         if end_date:
             shifts = shifts.filter(opened_at__date__lte=end_date)
         return Response([serialize_shift_summary(shift) for shift in shifts])
+
+
+class ShiftCurrentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses={200: CurrentShiftSerializer})
+    def get(self, request):
+        shift = (
+            Shift.objects.filter(status=Shift.OPEN)
+            .select_related("opened_by")
+            .first()
+        )
+        if not shift:
+            return Response({"shift": None})
+        return Response(CurrentShiftSerializer(shift).data)
 
 
 class ShiftReportView(APIView):
@@ -255,7 +271,7 @@ class ShiftCloseView(APIView):
 class ShiftApproveView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses={200: ShiftApproveResponseSerializer})
+    @extend_schema(request=None, responses={200: ShiftApproveResponseSerializer})
     @transaction.atomic
     def post(self, request, pk):
         if request.user.role not in ("OWNER", "MANAGER"):

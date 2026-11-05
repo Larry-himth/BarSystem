@@ -79,6 +79,13 @@ class ShiftListItemSerializer(serializers.Serializer):
     notes = serializers.CharField()
 
 
+class CurrentShiftSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    status = serializers.CharField()
+    opened_by_username = serializers.CharField(source="opened_by.username")
+    opened_at = serializers.DateTimeField()
+
+
 class ShiftReportResponseSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     status = serializers.CharField()

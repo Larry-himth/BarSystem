@@ -1,0 +1,1259 @@
+openapi: 3.0.3
+info:
+  title: Bar POS API
+  version: 1.0.0
+  description: POS and Management System API for a single bar in Uganda
+paths:
+  /api/schema/:
+    get:
+      operationId: schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - schema
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /api/v1/auth/me/:
+    get:
+      operationId: v1_auth_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+    patch:
+      operationId: v1_auth_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMeUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedMeUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedMeUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/v1/items/:
+    get:
+      operationId: v1_items_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ManagerItemRead'
+          description: ''
+  /api/v1/sales/:
+    get:
+      operationId: v1_sales_list
+      parameters:
+      - in: query
+        name: shift_id
+        schema:
+          type: integer
+        description: Shift whose sales should be listed.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SaleListRow'
+          description: ''
+    post:
+      operationId: v1_sales_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SaleCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SaleCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleCreated'
+          description: ''
+  /api/v1/sales/{id}/void/:
+    post:
+      operationId: v1_sales_void_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoidSale'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VoidSale'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoidSale'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoidResponse'
+          description: ''
+  /api/v1/shifts/:
+    get:
+      operationId: v1_shifts_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShiftListItem'
+          description: ''
+  /api/v1/shifts/{id}/approve/:
+    post:
+      operationId: v1_shifts_approve_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftApproveResponse'
+          description: ''
+  /api/v1/shifts/{id}/close/:
+    post:
+      operationId: v1_shifts_close_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftClose'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftClose'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftClose'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftCloseResponse'
+          description: ''
+  /api/v1/shifts/{id}/count/:
+    post:
+      operationId: v1_shifts_count_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftCount'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftCount'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftCount'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftCountResponse'
+          description: ''
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftCountResponse'
+          description: ''
+  /api/v1/shifts/{id}/dispute/:
+    post:
+      operationId: v1_shifts_dispute_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftDispute'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftDispute'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftDispute'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftDisputeResponse'
+          description: ''
+  /api/v1/shifts/{id}/momo-confirm/:
+    post:
+      operationId: v1_shifts_momo_confirm_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MomoConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MomoConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MomoConfirm'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MomoConfirmResponse'
+          description: ''
+  /api/v1/shifts/{id}/report/:
+    get:
+      operationId: v1_shifts_report_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftReportResponse'
+          description: ''
+  /api/v1/shifts/{id}/submit/:
+    post:
+      operationId: v1_shifts_submit_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShiftClose'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ShiftClose'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ShiftClose'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftCloseResponse'
+          description: ''
+  /api/v1/shifts/current/:
+    get:
+      operationId: v1_shifts_current_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentShift'
+          description: ''
+  /api/v1/shifts/open/:
+    post:
+      operationId: v1_shifts_open_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenShift'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OpenShift'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OpenShift'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftOpened'
+          description: ''
+  /api/v1/stock/:
+    get:
+      operationId: v1_stock_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockItemRead'
+          description: ''
+  /api/v1/stock-movements/:
+    post:
+      operationId: v1_stock_movements_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockMovementCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StockMovementCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StockMovementCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockMovementCreated'
+          description: ''
+  /api/v1/tabs/:
+    post:
+      operationId: v1_tabs_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TabCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TabCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TabCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TabCreated'
+          description: ''
+  /api/v1/tabs/{id}/payments/:
+    post:
+      operationId: v1_tabs_payments_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TabPayment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TabPayment'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TabPayment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TabPaymentResponse'
+          description: ''
+components:
+  schemas:
+    CountLine:
+      type: object
+      properties:
+        item_id:
+          type: integer
+        counted_qty:
+          type: integer
+          minimum: 0
+      required:
+      - counted_qty
+      - item_id
+    CurrentShift:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        opened_by_username:
+          type: string
+        opened_at:
+          type: string
+          format: date-time
+      required:
+      - id
+      - opened_at
+      - opened_by_username
+      - status
+    ItemUnitRead:
+      type: object
+      properties:
+        id:
+          type: integer
+        label_en:
+          type: string
+        label_sw:
+          type: string
+          readOnly: true
+        qty_in_base_unit:
+          type: integer
+        sell_price:
+          type: integer
+        can_sell:
+          type: boolean
+        can_buy:
+          type: boolean
+      required:
+      - can_buy
+      - can_sell
+      - id
+      - label_en
+      - label_sw
+      - qty_in_base_unit
+      - sell_price
+    LanguageEnum:
+      enum:
+      - en
+      - sw
+      type: string
+      description: |-
+        * `en` - en
+        * `sw` - sw
+    Login:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Worker username
+        pin:
+          type: string
+          description: Worker PIN
+      required:
+      - pin
+      - username
+    ManagerItemRead:
+      type: object
+      properties:
+        id:
+          type: integer
+        name_en:
+          type: string
+        name_sw:
+          type: string
+        category:
+          type: string
+        icon:
+          type: string
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemUnitRead'
+        buy_price:
+          type: integer
+        par_level:
+          type: integer
+      required:
+      - buy_price
+      - category
+      - icon
+      - id
+      - name_en
+      - name_sw
+      - par_level
+      - units
+    Me:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          type: string
+        language:
+          type: string
+      required:
+      - id
+      - language
+      - role
+      - username
+    MomoConfirm:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/StatusEnum'
+        note:
+          type: string
+      required:
+      - status
+    MomoConfirmResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: string
+      required:
+      - status
+    OpenShift:
+      type: object
+      properties:
+        notes:
+          type: string
+    PatchedMeUpdate:
+      type: object
+      properties:
+        language:
+          $ref: '#/components/schemas/LanguageEnum'
+    PaymentInput:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/PaymentInputMethodEnum'
+        amount:
+          type: integer
+          minimum: 1
+        momo_ref:
+          type: string
+        tab_id:
+          type: integer
+          nullable: true
+      required:
+      - amount
+      - method
+    PaymentInputMethodEnum:
+      enum:
+      - CASH
+      - MOMO
+      - TAB
+      type: string
+      description: |-
+        * `CASH` - CASH
+        * `MOMO` - MOMO
+        * `TAB` - TAB
+    PaymentRead:
+      type: object
+      properties:
+        method:
+          type: string
+        amount:
+          type: integer
+        momo_ref:
+          type: string
+      required:
+      - amount
+      - method
+      - momo_ref
+    SaleCreate:
+      type: object
+      properties:
+        client_uuid:
+          type: string
+          format: uuid
+        shift_id:
+          type: integer
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleLineInput'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentInput'
+      required:
+      - lines
+      - payments
+      - shift_id
+    SaleCreated:
+      type: object
+      properties:
+        id:
+          type: integer
+        total:
+          type: integer
+        negative_stock_flag:
+          type: boolean
+      required:
+      - id
+      - total
+    SaleLineInput:
+      type: object
+      properties:
+        item_unit_id:
+          type: integer
+        qty:
+          type: integer
+          minimum: 1
+      required:
+      - item_unit_id
+      - qty
+    SaleLineRead:
+      type: object
+      properties:
+        label_en:
+          type: string
+        label_sw:
+          type: string
+          readOnly: true
+        qty:
+          type: integer
+        unit_price:
+          type: integer
+      required:
+      - label_en
+      - label_sw
+      - qty
+      - unit_price
+    SaleListRow:
+      type: object
+      properties:
+        id:
+          type: integer
+        total:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        created_by_username:
+          type: string
+        is_voided:
+          type: boolean
+          readOnly: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/SaleLineRead'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRead'
+      required:
+      - created_at
+      - created_by_username
+      - id
+      - is_voided
+      - lines
+      - payments
+      - total
+    ShiftApproveResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: string
+      required:
+      - status
+    ShiftClose:
+      type: object
+      properties:
+        counts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CountLine'
+        pin:
+          type: string
+        declared_cash:
+          type: integer
+          minimum: 0
+    ShiftCloseResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - items
+      - status
+    ShiftCount:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ShiftCountTypeEnum'
+        counts:
+          type: array
+          items:
+            $ref: '#/components/schemas/CountLine'
+      required:
+      - counts
+      - type
+    ShiftCountResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        variances:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+      required:
+      - status
+    ShiftCountTypeEnum:
+      enum:
+      - OPENING
+      - CLOSING
+      type: string
+      description: |-
+        * `OPENING` - OPENING
+        * `CLOSING` - CLOSING
+    ShiftDispute:
+      type: object
+      properties:
+        note:
+          type: string
+      required:
+      - note
+    ShiftDisputeResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: string
+      required:
+      - status
+    ShiftListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        opened_by:
+          type: integer
+        opened_by_username:
+          type: string
+        opened_by_name:
+          type: string
+        opened_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+        submitted_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+      required:
+      - closed_at
+      - id
+      - notes
+      - opened_at
+      - opened_by
+      - opened_by_name
+      - opened_by_username
+      - status
+      - submitted_at
+    ShiftOpened:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        code:
+          type: string
+      required:
+      - id
+      - status
+    ShiftReportResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        expected_cash:
+          type: integer
+        declared_cash:
+          type: integer
+        expected_momo:
+          type: integer
+        momo_refs:
+          type: array
+          items:
+            type: string
+      required:
+      - declared_cash
+      - expected_cash
+      - expected_momo
+      - id
+      - items
+      - momo_refs
+      - status
+    StatusEnum:
+      enum:
+      - PENDING
+      - CONFIRMED
+      - DISPUTED
+      type: string
+      description: |-
+        * `PENDING` - PENDING
+        * `CONFIRMED` - CONFIRMED
+        * `DISPUTED` - DISPUTED
+    StockItemRead:
+      type: object
+      properties:
+        item_id:
+          type: integer
+        name_en:
+          type: string
+        name_sw:
+          type: string
+        base_unit:
+          type: string
+        stock_base:
+          type: integer
+          readOnly: true
+        par_level:
+          type: integer
+        is_low:
+          type: boolean
+          readOnly: true
+      required:
+      - base_unit
+      - is_low
+      - item_id
+      - name_en
+      - name_sw
+      - par_level
+      - stock_base
+    StockMovementCreate:
+      type: object
+      properties:
+        item_id:
+          type: integer
+        shift_id:
+          type: integer
+        type:
+          $ref: '#/components/schemas/StockMovementCreateTypeEnum'
+        qty_base:
+          type: integer
+        reason:
+          type: string
+      required:
+      - item_id
+      - qty_base
+      - shift_id
+      - type
+    StockMovementCreateTypeEnum:
+      enum:
+      - DELIVERY
+      - SPILLAGE
+      - COMP
+      - ADJUSTMENT
+      type: string
+      description: |-
+        * `DELIVERY` - DELIVERY
+        * `SPILLAGE` - SPILLAGE
+        * `COMP` - COMP
+        * `ADJUSTMENT` - ADJUSTMENT
+    StockMovementCreated:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    TabCreate:
+      type: object
+      properties:
+        customer_name:
+          type: string
+        phone:
+          type: string
+      required:
+      - customer_name
+    TabCreated:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+      required:
+      - id
+    TabPayment:
+      type: object
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+        method:
+          $ref: '#/components/schemas/TabPaymentMethodEnum'
+      required:
+      - amount
+      - method
+    TabPaymentMethodEnum:
+      enum:
+      - CASH
+      - MOMO
+      type: string
+      description: |-
+        * `CASH` - CASH
+        * `MOMO` - MOMO
+    TabPaymentResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        code:
+          type: string
+      required:
+      - status
+    VoidResponse:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+      - status
+    VoidSale:
+      type: object
+      properties:
+        pin:
+          type: string
+          description: Manager/owner PIN
+        reason:
+          type: string
+        approver_username:
+          type: string
+        approver_pin:
+          type: string
+      required:
+      - reason
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

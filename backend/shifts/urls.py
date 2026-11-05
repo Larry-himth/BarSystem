@@ -5,6 +5,7 @@ from .views import (
     ShiftApproveView,
     ShiftCloseView,
     ShiftCountView,
+    ShiftCurrentView,
     ShiftDisputeView,
     ShiftListView,
     ShiftMomoConfirmView,
@@ -15,6 +16,7 @@ from .views import (
 urlpatterns = [
     path("", ShiftListView.as_view(), name="shift-list"),
     path("open/", OpenShiftView.as_view(), name="open-shift"),
+    path("current/", ShiftCurrentView.as_view(), name="shift-current"),
     path("<int:pk>/count/", ShiftCountView.as_view(), name="shift-count"),
     path("<int:pk>/submit/", ShiftSubmitView.as_view(), name="shift-submit"),
     path("<int:pk>/close/", ShiftCloseView.as_view(), name="shift-close"),
