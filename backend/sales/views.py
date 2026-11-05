@@ -3,7 +3,7 @@ import uuid
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -31,14 +31,28 @@ from .serializers import (
 class SaleCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=SaleListRowSerializer(many=True))
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="shift_id",
+                type=int,
+                location=OpenApiParameter.QUERY,
+                required=True,
+                description="Shift whose sales should be listed.",
+            )
+        ],
+        responses=SaleListRowSerializer(many=True),
+    )
     def get(self, request):
         raw_shift_id = request.query_params.get("shift_id")
         try:
             shift_id = int(raw_shift_id)
         except (TypeError, ValueError):
             return Response(
-                {"detail": "shift_id query parameter is required and must be an integer"},
+                {
+                    "code": "INVALID_SHIFT_ID",
+                    "message": "shift_id query parameter is required and must be an integer",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

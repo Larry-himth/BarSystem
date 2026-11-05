@@ -176,3 +176,19 @@ def test_manager_lists_closed_shift_sales_but_bartender_gets_forbidden():
         "code": "FORBIDDEN",
         "message": "Bartenders may only list the open shift's sales",
     }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("query", ["", "?shift_id=not-an-integer"])
+def test_sales_list_rejects_missing_or_invalid_shift_id_with_stable_code(query):
+    bartender = make_user("sales-bartender-invalid-query", "BARTENDER")
+    client = APIClient()
+    client.force_authenticate(user=bartender)
+
+    response = client.get(f"/api/v1/sales/{query}")
+
+    assert response.status_code == 400
+    assert response.data == {
+        "code": "INVALID_SHIFT_ID",
+        "message": "shift_id query parameter is required and must be an integer",
+    }

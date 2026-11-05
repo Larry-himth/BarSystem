@@ -278,7 +278,7 @@ OpenAPI schema: `/api/schema/`. Swagger UI: `/api/docs/`.
   - `is_voided` is true when `voided_at` is set.
 - Errors:
   - `FORBIDDEN` `403`: a bartender requests any shift that is not open.
-  - `400`: missing or non-integer `shift_id`.
+  - `INVALID_SHIFT_ID` `400`: `shift_id` is missing or is not an integer.
   - `404`: shift not found.
   - `401` when unauthenticated.
 

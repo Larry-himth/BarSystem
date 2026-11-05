@@ -233,6 +233,13 @@ paths:
   /api/v1/sales/:
     get:
       operationId: v1_sales_list
+      parameters:
+      - in: query
+        name: shift_id
+        schema:
+          type: integer
+        description: Shift whose sales should be listed.
+        required: true
       tags:
       - v1
       security:
